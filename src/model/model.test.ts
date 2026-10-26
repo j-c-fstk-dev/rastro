@@ -75,3 +75,24 @@ describe('geohash', () => {
     expect(Math.abs(lon + 48.4833)).toBeLessThan(0.05)
   })
 })
+
+describe('collectives', () => {
+  it('round-trips a group and keeps the newest version', async () => {
+    const { buildCollectiveTemplate, latestCollectives, memberSet, parseAddress } = await import('./collective')
+    const sk = generateSecretKey()
+    const member = getPublicKey(generateSecretKey())
+    const v1 = finalizeEvent(buildCollectiveTemplate({ d: 'g1', name: 'Old', description: '', members: [] }, 100), sk)
+    const v2 = finalizeEvent(buildCollectiveTemplate({ d: 'g1', name: 'DeCleanup Floripa', description: 'Beach crew', members: [member, member] }, 200), sk)
+    const [group] = latestCollectives([v2, v1])
+    expect(group.name).toBe('DeCleanup Floripa')
+    expect(group.members).toEqual([member])
+    expect(memberSet(group).has(getPublicKey(sk))).toBe(true)
+    expect(parseAddress(group.address)).toEqual({ owner: getPublicKey(sk), d: 'g1' })
+  })
+
+  it('links an action to its group', () => {
+    const address = `33910:${'b'.repeat(64)}:g1`
+    const event = finalizeEvent(buildActionTemplate({ ...draft, collective: address }), generateSecretKey())
+    expect(parseAction(event)?.collective).toBe(address)
+  })
+})

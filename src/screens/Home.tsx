@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../i18n'
 import type { Action, Witness } from '../model/action'
-import { computeStatus } from '../model/status'
+import { statusFor } from '../model/status'
 import { loadFeed, loadWitnesses } from '../nostr/data'
-import { go } from '../router'
 import { useSession } from '../session'
-import { displayName, formatDate, formatNumber } from '../ui/format'
+import { dayOf, displayName, formatNumber, monthOf } from '../ui/format'
+import { IconScan } from '../ui/icons'
 import { Photo } from '../ui/Photo'
-import { StatusBadge } from '../ui/StatusBadge'
+import { StatusLabel, Trail } from '../ui/Trail'
+import { useCollectives } from '../ui/useCollectives'
 import { useProfiles } from '../ui/useProfiles'
 
-export function Home() {
-  const { pubkey } = useSession()
+export function useFeed() {
   const [actions, setActions] = useState<Action[] | null>(null)
   const [witnesses, setWitnesses] = useState<Witness[]>([])
-  const [mineOnly, setMineOnly] = useState(false)
-  const profiles = useProfiles(actions?.map((a) => a.pubkey) ?? [])
-
   useEffect(() => {
     let cancelled = false
     const load = async (remote: boolean) => {
@@ -30,59 +28,67 @@ export function Home() {
       cancelled = true
     }
   }, [])
+  return { actions, witnesses }
+}
 
+export function Home() {
+  const { pubkey } = useSession()
+  const { t, tn, locale } = useI18n()
+  const { actions, witnesses } = useFeed()
+  const [mineOnly, setMineOnly] = useState(false)
+  const profiles = useProfiles(actions?.map((a) => a.pubkey) ?? [])
+  const groups = useCollectives(actions?.map((a) => a.collective) ?? [])
   const visible = actions?.filter((a) => !mineOnly || a.pubkey === pubkey) ?? []
 
   return (
     <main className="page">
-      <div className="hero-actions">
-        <button className="button primary big" onClick={() => go('new')}>
-          + Registrar ação
-        </button>
-        <button className="button big" onClick={() => go('scan')}>
-          Escanear QR de presença
-        </button>
-      </div>
-
-      <div className="section-head">
-        <h2>Ações</h2>
-        <div className="segmented">
-          <button className={!mineOnly ? 'active' : ''} onClick={() => setMineOnly(false)}>
-            Todas
-          </button>
-          <button className={mineOnly ? 'active' : ''} onClick={() => setMineOnly(true)}>
-            Minhas
-          </button>
+      <div className="home-head">
+        <a className="btn btn-block" href="#/scan">
+          <IconScan /> {t('home.scan')}
+        </a>
+        <div className="spread">
+          <h1>{t('nav.log')}</h1>
+          <div className="segmented" role="group">
+            <button aria-pressed={!mineOnly} onClick={() => setMineOnly(false)}>{t('home.all')}</button>
+            <button aria-pressed={mineOnly} onClick={() => setMineOnly(true)}>{t('home.mine')}</button>
+          </div>
         </div>
       </div>
 
-      {actions === null && <p className="muted">Carregando…</p>}
+      {actions === null && <p className="muted">{t('home.loading')}</p>}
       {actions !== null && visible.length === 0 && (
         <div className="empty">
-          <p>Nenhuma ação por aqui ainda.</p>
-          <p className="muted small">Registre o primeiro mutirão: fotos de antes e depois, alguns números e pronto.</p>
+          <h2>{mineOnly ? t('home.emptyMine') : t('home.emptyTitle')}</h2>
+          <p className="muted">{t('home.emptyBody')}</p>
+          <a className="btn btn-flag" href="#/new">{t('new.title')}</a>
         </div>
       )}
 
-      <ul className="cards">
+      <ul className="log">
         {visible.map((action) => {
-          const { status, witnesses: ws } = computeStatus(action, witnesses)
+          const { status, witnesses: ws } = statusFor(action, witnesses, groups)
           const cover = action.photos.find((p) => p.role === 'after') ?? action.photos[0]
+          const weight = action.metrics.weight_kg
           return (
             <li key={action.id}>
-              <a className="card" href={`#/a/${action.id}`}>
-                {cover ? <Photo photo={cover} alt="" className="card-photo" /> : <div className="card-photo" />}
-                <div className="card-body">
-                  <div className="card-top">
-                    <StatusBadge status={status} />
-                    <span className="muted small">{formatDate(action.createdAt)}</span>
-                  </div>
-                  <strong>{action.place || 'Ação de limpeza'}</strong>
-                  <span className="muted small">
-                    {action.metrics.weight_kg !== undefined && `${formatNumber(action.metrics.weight_kg)} kg · `}
-                    {ws.length} {ws.length === 1 ? 'testemunha' : 'testemunhas'} · por {displayName(action.pubkey, profiles)}
-                  </span>
+              <a className="entry" href={`#/a/${action.id}`}>
+                <div className="entry-date">
+                  <b>{dayOf(action.createdAt)}</b>
+                  <span>{monthOf(action.createdAt, locale)}</span>
                 </div>
+                <div className="entry-main">
+                  <h3>{action.place || t('home.untitled')}</h3>
+                  <span className="entry-meta">
+                    {weight !== undefined ? `${formatNumber(weight, locale)} kg, ` : ''}
+                    {t('home.by', { name: displayName(action.pubkey, profiles) })}
+                  </span>
+                  <div className="row">
+                    <Trail witnesses={ws} status={status} />
+                    <StatusLabel status={status} />
+                  </div>
+                  <span className="visually-hidden">{tn('witness.count', ws.length)}</span>
+                </div>
+                {cover ? <Photo photo={cover} alt="" className="entry-photo" /> : <div className="entry-photo" />}
               </a>
             </li>
           )

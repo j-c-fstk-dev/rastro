@@ -1,8 +1,20 @@
 import { useState, type FormEvent } from 'react'
+import { useI18n } from '../i18n'
+import { KeyError } from '../nostr/keys'
 import { useSession } from '../session'
+import { LangSwitch } from '../ui/LangSwitch'
+import { Trail } from '../ui/Trail'
+import type { Witness } from '../model/action'
+
+const demoTrail: Witness[] = [
+  { id: '1', pubkey: 'a', actionId: '', mode: 'presencial', note: '', createdAt: 0 },
+  { id: '2', pubkey: 'b', actionId: '', mode: 'presencial', note: '', createdAt: 0 },
+  { id: '3', pubkey: 'c', actionId: '', mode: 'remoto', note: '', createdAt: 0 },
+]
 
 export function Welcome() {
   const { start, restore } = useSession()
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [restoring, setRestoring] = useState(false)
   const [key, setKey] = useState('')
@@ -21,49 +33,53 @@ export function Welcome() {
     try {
       restore(key, password || undefined)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível restaurar a chave.')
+      if (err instanceof KeyError) setError(t(err.code === 'needs-password' ? 'keys.needsPassword' : 'keys.notNsec'))
+      else setError(t('welcome.restoreError'))
     }
   }
 
   return (
     <main className="welcome">
-      <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="welcome-logo" />
-      <h1>Rastro</h1>
-      <p className="lead">Ações reais, assinadas por quem fez, confirmadas por quem estava lá.</p>
+      <div className="welcome-top">
+        <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={40} height={40} />
+        <LangSwitch />
+      </div>
+      <div className="welcome-mark">
+        <Trail witnesses={demoTrail} status="confirmed" large />
+        <h1>Rastro</h1>
+        <p className="lead">{t('app.tagline')}</p>
+      </div>
 
       {!restoring ? (
         <form onSubmit={onStart} className="stack">
           <label className="field">
-            <span>Como você quer ser chamado?</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome ou apelido" required autoFocus />
+            <span>{t('welcome.nameLabel')}</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('welcome.namePlaceholder')} required autoComplete="nickname" />
           </label>
-          <button className="button primary big" disabled={busy || !name.trim()}>
-            Começar
+          <button className="btn btn-flag btn-block" disabled={busy || !name.trim()}>
+            {t('welcome.start')}
           </button>
-          <p className="muted small">
-            Sem cadastro, sem e-mail, sem senha. Uma chave única é criada neste aparelho e assina tudo o que você
-            registrar.
-          </p>
-          <button type="button" className="link" onClick={() => setRestoring(true)}>
-            Já tenho uma chave
+          <p className="muted small">{t('welcome.explain')}</p>
+          <button type="button" className="btn btn-text" onClick={() => setRestoring(true)}>
+            {t('welcome.haveKey')}
           </button>
         </form>
       ) : (
         <form onSubmit={onRestore} className="stack">
           <label className="field">
-            <span>Sua chave (nsec… ou ncryptsec…)</span>
-            <input value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" required />
+            <span>{t('welcome.keyLabel')}</span>
+            <input value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" spellCheck={false} required />
           </label>
           {key.trim().startsWith('ncryptsec') && (
             <label className="field">
-              <span>Senha da chave</span>
+              <span>{t('welcome.keyPassword')}</span>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </label>
           )}
           {error && <p className="error">{error}</p>}
-          <button className="button primary big">Restaurar</button>
-          <button type="button" className="link" onClick={() => setRestoring(false)}>
-            Voltar
+          <button className="btn btn-ink btn-block">{t('welcome.restore')}</button>
+          <button type="button" className="btn btn-text" onClick={() => setRestoring(false)}>
+            {t('welcome.back')}
           </button>
         </form>
       )}

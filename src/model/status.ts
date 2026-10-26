@@ -1,12 +1,7 @@
 import type { Action, Witness } from './action'
+import { memberSet, type Collective } from './collective'
 
 export type Status = 'observed' | 'confirmed' | 'consolidated'
-
-export const STATUS_LABELS: Record<Status, string> = {
-  observed: 'Observado',
-  confirmed: 'Confirmado',
-  consolidated: 'Consolidado',
-}
 
 export interface StatusResult {
   status: Status
@@ -49,3 +44,11 @@ export function computeStatus(
 }
 
 const rank = (w: Witness) => (w.mode === 'presencial' ? 1 : 0)
+
+/** Status of an action, using its group's member list when it belongs to one. */
+export function statusFor(action: Pick<Action, 'id' | 'pubkey' | 'collective'>, witnesses: Witness[], groups: Map<string, Collective>) {
+  const group = action.collective ? groups.get(action.collective) : undefined
+  if (!group) return computeStatus(action, witnesses)
+  const members = memberSet(group)
+  return computeStatus(action, witnesses, { members, trusted: members })
+}

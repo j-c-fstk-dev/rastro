@@ -1,0 +1,8 @@
+# One onion address for this node: relay on port 80, photos on port 3000.
+# Tor needs IP addresses here; they are fixed in docker-compose.yml.
+DataDirectory /var/lib/tor
+HiddenServiceDir /var/lib/tor/rastro
+HiddenServicePort 80 172.30.70.10:7777
+HiddenServicePort 3000 172.30.70.11:3000
+SocksPort 0
+Log notice stdout

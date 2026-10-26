@@ -9,11 +9,13 @@ export function shortKey(pubkey: string): string {
 export const displayName = (pubkey: string, profiles: Map<string, Profile>) =>
   profiles.get(pubkey)?.name || shortKey(pubkey)
 
-const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-const timeFormat = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' })
+const at = (seconds: number) => new Date(seconds * 1000)
 
-export const formatDate = (seconds: number) => dateFormat.format(new Date(seconds * 1000))
-export const formatDateTime = (seconds: number) =>
-  `${dateFormat.format(new Date(seconds * 1000))}, ${timeFormat.format(new Date(seconds * 1000))}`
+export const formatDate = (seconds: number, locale: string) =>
+  at(seconds).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+export const formatDateTime = (seconds: number, locale: string) =>
+  at(seconds).toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+export const dayOf = (seconds: number) => at(seconds).getDate()
+export const monthOf = (seconds: number, locale: string) => at(seconds).toLocaleDateString(locale, { month: 'short' })
 
-export const formatNumber = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+export const formatNumber = (n: number, locale: string) => n.toLocaleString(locale, { maximumFractionDigits: 1 })

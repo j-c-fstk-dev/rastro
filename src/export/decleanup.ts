@@ -1,5 +1,5 @@
 import type { Action, Witness } from '../model/action'
-import { WASTE_TYPES } from '../model/action'
+import { en } from '../i18n/en'
 import { decodeGeohash } from '../geo/geohash'
 import type { Status } from '../model/status'
 
@@ -24,7 +24,8 @@ export function toDecleanup(action: Action, witnesses: Witness[], status: Status
       areaSqm: action.metrics.area_sqm ?? null,
       bags: action.metrics.bags ?? null,
       durationMinutes: action.metrics.duration_min ?? null,
-      wasteTypes: action.waste.map((w) => WASTE_TYPES[w]),
+      // DeCleanup uses English labels, e.g. "Plastic".
+      wasteTypes: action.waste.map((w) => en[`waste.${w}`]),
       contributorsCount: action.metrics.participants ?? witnesses.length + 1,
     },
     recyclables: {

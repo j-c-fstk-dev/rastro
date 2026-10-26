@@ -17,16 +17,22 @@ export function createIdentity(): Uint8Array {
   return sk
 }
 
+export class KeyError extends Error {
+  constructor(public code: 'needs-password' | 'not-nsec') {
+    super(code)
+  }
+}
+
 /** Restores an identity from an nsec or a password-protected ncryptsec. */
 export function restoreIdentity(input: string, password?: string): Uint8Array {
   const value = input.trim()
   let sk: Uint8Array
   if (value.startsWith('ncryptsec')) {
-    if (!password) throw new Error('Esta chave está protegida por senha.')
+    if (!password) throw new KeyError('needs-password')
     sk = nip49.decrypt(value, password)
   } else {
     const decoded = nip19.decode(value)
-    if (decoded.type !== 'nsec') throw new Error('Isso não parece uma chave privada (nsec).')
+    if (decoded.type !== 'nsec') throw new KeyError('not-nsec')
     sk = decoded.data
   }
   localStorage.setItem(SECRET_KEY, bytesToHex(sk))

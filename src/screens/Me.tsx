@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { useI18n } from '../i18n'
 import { DEFAULT_BLOSSOM_SERVERS, DEFAULT_RELAYS, getBlossomServers, getRelays, resetInfrastructure, setBlossomServers, setRelays } from '../nostr/config'
 import { encryptedBackup, forgetIdentity, npubOf, nsecOf } from '../nostr/keys'
 import { flush } from '../nostr/outbox'
 import { useSession } from '../session'
+import { IconPrint } from '../ui/icons'
+import { LangSwitch } from '../ui/LangSwitch'
 import { QrCode } from '../ui/QrCode'
 import { useProfiles } from '../ui/useProfiles'
 
@@ -11,8 +14,9 @@ const fromLines = (text: string) => text.split('\n').map((s) => s.trim()).filter
 
 export function Me() {
   const { sk, pubkey, pending, online, updateName } = useSession()
+  const { t, tn } = useI18n()
   const profiles = useProfiles(pubkey ? [pubkey] : [])
-  const [name, setName] = useState('')
+  const [name, setName] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [backup, setBackup] = useState('')
   const [relays, setRelaysText] = useState(toLines(getRelays()))
@@ -21,114 +25,109 @@ export function Me() {
 
   if (!sk || !pubkey) return null
   const currentName = profiles.get(pubkey)?.name ?? ''
+  const npub = npubOf(pubkey)
 
   const saveInfra = () => {
-    setRelays(fromLines(relays).filter((r) => r.startsWith('wss://') || r.startsWith('ws://')))
-    setBlossomServers(fromLines(servers).filter((s) => s.startsWith('https://') || s.startsWith('http://')))
+    setRelays(fromLines(relays).filter((r) => /^wss?:\/\//.test(r)))
+    setBlossomServers(fromLines(servers).filter((s) => /^https?:\/\//.test(s)))
     setRelaysText(toLines(getRelays()))
     setServersText(toLines(getBlossomServers()))
-    setSaved('Salvo.')
+    setSaved(t('me.saved'))
   }
 
   const reset = () => {
     resetInfrastructure()
     setRelaysText(toLines(DEFAULT_RELAYS))
     setServersText(toLines(DEFAULT_BLOSSOM_SERVERS))
-    setSaved('Padrões restaurados.')
+    setSaved(t('me.resetDone'))
   }
 
   const leave = () => {
-    if (confirm('Apagar a chave deste aparelho? Sem o backup, você perde o acesso a esta identidade para sempre.')) {
+    if (confirm(t('me.forgetConfirm'))) {
       forgetIdentity()
       location.reload()
     }
   }
 
   return (
-    <main className="page stack">
-      <h1>Você</h1>
+    <main className="page stack-lg">
+      <div className="spread">
+        <h1>{t('me.title')}</h1>
+        <LangSwitch />
+      </div>
 
       <section className="panel stack">
         <label className="field">
-          <span>Nome</span>
-          <input value={name || currentName} onChange={(e) => setName(e.target.value)} />
+          <span>{t('me.name')}</span>
+          <input value={name ?? currentName} onChange={(e) => setName(e.target.value)} />
         </label>
-        <button className="button" disabled={!name.trim() || name === currentName} onClick={() => void updateName(name.trim())}>
-          Atualizar nome
+        <button className="btn" disabled={!name?.trim() || name === currentName} onClick={() => void updateName(name!.trim())}>
+          {t('me.updateName')}
         </button>
-        <p className="muted small break">Sua identidade pública: {npubOf(pubkey)}</p>
       </section>
 
       <section className="panel stack">
-        <h2>Envio</h2>
+        <h2>{t('me.identity')}</h2>
+        <div className="qr-inline">
+          <QrCode value={`nostr:${npub}`} size={240} />
+          <p className="muted small center">{t('me.identityHint')}</p>
+          <code className="break">{npub}</code>
+        </div>
+      </section>
+
+      <section className="panel stack">
+        <h2>{t('me.sync')}</h2>
         <p>
-          {online ? 'Conectado.' : 'Sem internet — tudo fica guardado e é enviado quando a conexão voltar.'}{' '}
-          {pending > 0 ? `${pending} ${pending === 1 ? 'item aguardando' : 'itens aguardando'} envio.` : 'Nada pendente.'}
+          {online ? t('me.online') : t('me.offline')} {pending > 0 ? tn('me.pending', pending) : t('me.nothingPending')}
         </p>
-        {pending > 0 && online && (
-          <button className="button" onClick={() => void flush()}>
-            Enviar agora
-          </button>
-        )}
+        {pending > 0 && online && <button className="btn" onClick={() => void flush()}>{t('me.sendNow')}</button>}
+        <a className="btn btn-text" href="#/report"><IconPrint /> {t('report.title')}</a>
       </section>
 
       <section className="panel stack">
-        <h2>Backup da chave</h2>
-        <p className="small">
-          Sua chave só existe neste aparelho. Se perder o celular sem backup, perde a identidade. Proteja com uma senha e
-          guarde o código (ou o QR) num lugar seguro.
-        </p>
+        <h2>{t('me.backup')}</h2>
+        <p className="small">{t('me.backupBody')}</p>
         {!backup ? (
           <>
             <label className="field">
-              <span>Crie uma senha para o backup</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} />
+              <span>{t('me.backupPassword')}</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} autoComplete="new-password" />
             </label>
-            <button className="button primary" disabled={password.length < 8} onClick={() => setBackup(encryptedBackup(sk, password))}>
-              Gerar backup protegido
+            <button className="btn btn-ink" disabled={password.length < 8} onClick={() => setBackup(encryptedBackup(sk, password))}>
+              {t('me.backupCreate')}
             </button>
-            <button
-              className="link"
-              onClick={() => confirm('A chave sem senha dá controle total da sua identidade a quem a vir. Mostrar mesmo assim?') && setBackup(nsecOf(sk))}
-            >
-              Mostrar chave sem senha
+            <button className="btn btn-text" onClick={() => confirm(t('me.backupPlainConfirm')) && setBackup(nsecOf(sk))}>
+              {t('me.backupPlain')}
             </button>
           </>
         ) : (
-          <div className="stack center">
+          <div className="qr-inline">
             <QrCode value={backup} size={240} />
             <code className="break">{backup}</code>
-            <button className="button" onClick={() => setBackup('')}>
-              Esconder
-            </button>
+            <button className="btn" onClick={() => setBackup('')}>{t('me.hide')}</button>
           </div>
         )}
       </section>
 
       <section className="panel stack">
-        <h2>Servidores</h2>
-        <p className="small muted">
-          Por onde suas ações circulam. Coloque aqui o endereço do nó da sua comunidade. Ninguém é dono da rede: dá para
-          trocar a qualquer momento.
-        </p>
+        <h2>{t('me.servers')}</h2>
+        <p className="small muted">{t('me.serversBody')}</p>
         <label className="field">
-          <span>Relays (um por linha)</span>
-          <textarea rows={4} value={relays} onChange={(e) => setRelaysText(e.target.value)} />
+          <span>{t('me.relays')}</span>
+          <textarea rows={4} value={relays} onChange={(e) => setRelaysText(e.target.value)} spellCheck={false} />
         </label>
         <label className="field">
-          <span>Servidores de fotos — Blossom (um por linha)</span>
-          <textarea rows={3} value={servers} onChange={(e) => setServersText(e.target.value)} />
+          <span>{t('me.blossom')}</span>
+          <textarea rows={3} value={servers} onChange={(e) => setServersText(e.target.value)} spellCheck={false} />
         </label>
         <div className="row">
-          <button className="button" onClick={saveInfra}>Salvar</button>
-          <button className="link" onClick={reset}>Restaurar padrões</button>
+          <button className="btn" onClick={saveInfra}>{t('me.save')}</button>
+          <button className="btn btn-text" onClick={reset}>{t('me.reset')}</button>
         </div>
         {saved && <p className="ok small">{saved}</p>}
       </section>
 
-      <button className="link danger" onClick={leave}>
-        Apagar chave deste aparelho
-      </button>
+      <button className="btn btn-text danger" onClick={leave}>{t('me.forget')}</button>
     </main>
   )
 }

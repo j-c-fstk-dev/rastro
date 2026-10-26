@@ -1,7 +1,8 @@
 import type { Event } from 'nostr-tools/pure'
 import * as nip19 from 'nostr-tools/nip19'
 import { parseAction, parseWitness, type Action, type Witness } from '../model/action'
-import { KIND_ACTION, KIND_PROFILE, KIND_WITNESS } from '../model/kinds'
+import { latestCollectives, parseAddress, type Collective } from '../model/collective'
+import { KIND_ACTION, KIND_COLLECTIVE, KIND_PROFILE, KIND_WITNESS } from '../model/kinds'
 import { mergeEvents, queryLocal, queryRelays } from './client'
 import { getRelays } from './config'
 import { getEvent } from './store'
@@ -27,6 +28,39 @@ export async function loadFeed(remote: boolean): Promise<Action[]> {
   const local = await queryLocal(isAction)
   const found = remote ? await queryRelays({ kinds: [KIND_ACTION], '#t': ['cleanup'], limit: 50 }) : []
   return mergeEvents(local, found).map(parseAction).filter((a): a is Action => a !== null)
+}
+
+/** Actions that point at a group. */
+export async function loadGroupActions(address: string, remote: boolean): Promise<Action[]> {
+  const inGroup = (e: Event) => isAction(e) && e.tags.some((t) => t[0] === 'a' && t[1] === address)
+  const local = await queryLocal(inGroup)
+  const found = remote ? await queryRelays({ kinds: [KIND_ACTION], '#a': [address] }) : []
+  return mergeEvents(local, found).map(parseAction).filter((a): a is Action => a !== null)
+}
+
+const isCollective = (e: Event) => e.kind === KIND_COLLECTIVE
+
+/** Groups this person owns or belongs to. */
+export async function loadMyCollectives(pubkey: string, remote: boolean): Promise<Collective[]> {
+  const mine = (e: Event) => isCollective(e) && (e.pubkey === pubkey || e.tags.some((t) => t[0] === 'p' && t[1] === pubkey))
+  const local = await queryLocal(mine)
+  const found = remote
+    ? mergeEvents(
+        await queryRelays({ kinds: [KIND_COLLECTIVE], authors: [pubkey] }),
+        await queryRelays({ kinds: [KIND_COLLECTIVE], '#p': [pubkey] }),
+      )
+    : []
+  // A newer version may have removed this person, so filter after picking the latest.
+  return latestCollectives(mergeEvents(local, found)).filter((c) => c.owner === pubkey || c.members.includes(pubkey))
+}
+
+export async function loadCollective(address: string, remote: boolean): Promise<Collective | null> {
+  const ref = parseAddress(address)
+  if (!ref) return null
+  const match = (e: Event) => isCollective(e) && e.pubkey === ref.owner && e.tags.some((t) => t[0] === 'd' && t[1] === ref.d)
+  const local = await queryLocal(match)
+  const found = remote ? await queryRelays({ kinds: [KIND_COLLECTIVE], authors: [ref.owner], '#d': [ref.d] }) : []
+  return latestCollectives(mergeEvents(local, found))[0] ?? null
 }
 
 export async function loadWitnesses(actionIds: string[], remote: boolean): Promise<Witness[]> {
@@ -73,4 +107,33 @@ export function parseActionRef(ref: string): string | null {
     // not a nip19 string
   }
   return null
+}
+
+/** Shareable reference to a group. */
+export const groupRef = (c: Pick<Collective, 'owner' | 'd'>) =>
+  nip19.naddrEncode({ kind: KIND_COLLECTIVE, pubkey: c.owner, identifier: c.d, relays: getRelays().slice(0, 2) })
+
+/** Turns a group reference (naddr) back into its address. */
+export function parseGroupRef(ref: string): string | null {
+  try {
+    const decoded = nip19.decode(ref)
+    if (decoded.type === 'naddr' && decoded.data.kind === KIND_COLLECTIVE) {
+      return `${KIND_COLLECTIVE}:${decoded.data.pubkey}:${decoded.data.identifier}`
+    }
+  } catch {
+    // not an naddr
+  }
+  return null
+}
+
+/** Finds an npub in scanned or pasted text and returns its hex pubkey. */
+export function pubkeyFromText(text: string): string | null {
+  const match = text.match(/npub1[02-9ac-hj-np-z]{58}/)
+  if (!match) return null
+  try {
+    const decoded = nip19.decode(match[0])
+    return decoded.type === 'npub' ? decoded.data : null
+  } catch {
+    return null
+  }
 }

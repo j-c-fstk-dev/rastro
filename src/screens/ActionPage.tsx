@@ -1,26 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toDecleanup } from '../export/decleanup'
-import { buildWitnessTemplate, METRICS, WASTE_TYPES, type Action, type MetricKey, type Witness } from '../model/action'
-import { computeStatus } from '../model/status'
-import { actionRef, loadAction, loadWitnesses } from '../nostr/data'
+import { useI18n } from '../i18n'
+import { buildWitnessTemplate, METRICS, type Action, type MetricKey, type Witness } from '../model/action'
+import { statusFor } from '../model/status'
+import { actionRef, groupRef, loadAction, loadWitnesses } from '../nostr/data'
 import { sign } from '../nostr/keys'
 import { enqueueEvent } from '../nostr/outbox'
 import { absoluteLink } from '../router'
 import { useSession } from '../session'
 import { displayName, formatDateTime, formatNumber } from '../ui/format'
+import { IconCheck, IconDownload, IconQr, IconShare } from '../ui/icons'
 import { Photo } from '../ui/Photo'
 import { QrCode } from '../ui/QrCode'
-import { StatusBadge } from '../ui/StatusBadge'
+import { StatusLabel, Trail } from '../ui/Trail'
+import { useCollectives } from '../ui/useCollectives'
 import { useProfiles } from '../ui/useProfiles'
-
-const STATUS_HELP = {
-  observed: 'Publicada por quem fez. Ainda sem testemunhas.',
-  confirmed: 'Pelo menos 2 pessoas confirmaram esta ação.',
-  consolidated: 'Confirmada por 5 pessoas, ou por 2 membros do coletivo que estavam no local.',
-}
 
 export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean; isNew: boolean }) {
   const { sk, pubkey, start } = useSession()
+  const { t, tn, locale } = useI18n()
   const [action, setAction] = useState<Action | null | undefined>(undefined)
   const [witnesses, setWitnesses] = useState<Witness[]>([])
   const [showQr, setShowQr] = useState(isNew)
@@ -45,41 +43,43 @@ export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean;
 
   useEffect(() => {
     void refresh(false).then(() => refresh(true))
-    // While the presence QR is open, keep picking up new testimonies.
-    const timer = setInterval(() => void refresh(true), 8000)
+    // Keep picking up new testimonies while the page is open.
+    const timer = setInterval(() => document.visibilityState === 'visible' && void refresh(true), 8000)
     return () => clearInterval(timer)
   }, [refresh])
 
   const profiles = useProfiles(action ? [action.pubkey, ...witnesses.map((w) => w.pubkey)] : [])
+  const groups = useCollectives([action?.collective])
 
-  if (action === undefined) return <main className="page"><p className="muted">Buscando a ação…</p></main>
+  if (action === undefined) return <main className="page"><p className="muted">{t('action.loading')}</p></main>
   if (action === null)
     return (
-      <main className="page">
-        <h1>Ação não encontrada</h1>
-        <p className="muted">Ela pode ainda não ter chegado aos servidores que este aparelho usa. Tente de novo com internet.</p>
+      <main className="page stack">
+        <h1>{t('action.notFoundTitle')}</h1>
+        <p className="muted">{t('action.notFoundBody')}</p>
       </main>
     )
 
-  const { status, witnesses: counted } = computeStatus(action, witnesses)
+  const { status, witnesses: counted } = statusFor(action, witnesses, groups)
+  const group = action.collective ? groups.get(action.collective) : undefined
   const isMine = action.pubkey === pubkey
   const alreadyWitnessed = counted.some((w) => w.pubkey === pubkey)
   const ref = actionRef(action)
   const presenceLink = absoluteLink(`a/${ref}?w=1`)
   const publicLink = absoluteLink(`a/${ref}`)
+  const title = action.place || t('home.untitled')
 
   const witness = async () => {
     setBusy(true)
     const key = sk ?? (await start(name.trim()))
-    const event = sign(key, buildWitnessTemplate(action, fromQr ? 'presencial' : 'remoto', note.trim()))
-    await enqueueEvent(event)
+    await enqueueEvent(sign(key, buildWitnessTemplate(action, fromQr ? 'presencial' : 'remoto', note.trim())))
     await refresh(false)
     setBusy(false)
   }
 
   const share = async () => {
     if (navigator.share) {
-      await navigator.share({ title: 'Rastro', text: action.place ?? 'Ação no Rastro', url: publicLink }).catch(() => {})
+      await navigator.share({ title: `Rastro: ${title}`, text: t('action.shareText'), url: publicLink }).catch(() => {})
     } else {
       await navigator.clipboard.writeText(publicLink)
       setCopied(true)
@@ -96,107 +96,125 @@ export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean;
     URL.revokeObjectURL(url)
   }
 
-  const metricKeys = (Object.keys(METRICS) as MetricKey[]).filter((k) => action.metrics[k] !== undefined)
+  const facts = (Object.keys(METRICS) as MetricKey[]).filter((k) => action.metrics[k] !== undefined)
 
   return (
-    <main className="page">
+    <main className={`page ${sk ? '' : 'no-tabbar'}`}>
       {showQr && isMine && (
-        <div className="qr-overlay" role="dialog" aria-label="QR de presença">
-          <h2>Quem estava lá, escaneie</h2>
+        <div className="qr-overlay" role="dialog" aria-modal="true" aria-label={t('action.qrTitle')}>
+          <h2>{t('action.qrTitle')}</h2>
           <QrCode value={presenceLink} />
-          <p className="muted small center">
-            Cada pessoa confirma com a própria chave. {counted.length} {counted.length === 1 ? 'testemunha' : 'testemunhas'} até agora.
-          </p>
-          <button className="button primary big" onClick={() => setShowQr(false)}>
-            Fechar
-          </button>
+          <p>{t('action.qrBody')}</p>
+          <p className="qr-count">{tn('witness.count', counted.length)}</p>
+          <button className="btn" onClick={() => setShowQr(false)}>{t('action.close')}</button>
         </div>
       )}
 
-      <div className="action-head">
-        <StatusBadge status={status} />
-        <span className="muted small">{formatDateTime(action.createdAt)}</span>
+      <div className="action-hero">
+        <div className="spread">
+          <StatusLabel status={status} />
+          <span className="muted small">{formatDateTime(action.createdAt, locale)}</span>
+        </div>
+        <h1>{title}</h1>
+        <p className="muted">
+          {t('action.by', { name: displayName(action.pubkey, profiles) })}
+          {isMine && ` ${t('action.you')}`}
+          {group && (
+            <>
+              {', '}
+              <a href={`#/g/${groupRef(group)}`}>{t('action.in', { group: group.name })}</a>
+            </>
+          )}
+        </p>
       </div>
-      <h1>{action.place || 'Ação de limpeza'}</h1>
-      <p className="muted">por {displayName(action.pubkey, profiles)}{isMine && ' (você)'}</p>
 
-      <div className="photo-pair">
-        {action.photos.map((p) => (
-          <figure key={p.sha256}>
-            <Photo photo={p} alt={p.role === 'before' ? 'Antes' : 'Depois'} />
-            <figcaption>{p.role === 'before' ? 'Antes' : 'Depois'}</figcaption>
-          </figure>
-        ))}
+      <div className={`action-photos ${action.photos.length === 1 ? 'single' : ''}`}>
+        {action.photos.map((p) => {
+          const label = t(p.role === 'before' ? 'new.before' : 'new.after')
+          return (
+            <figure key={p.sha256}>
+              <Photo photo={p} alt={label} />
+              <span className="photo-tag">{label}</span>
+            </figure>
+          )
+        })}
       </div>
 
-      {metricKeys.length > 0 && (
-        <dl className="metrics">
-          {metricKeys.map((k) => (
+      {facts.length > 0 && (
+        <dl className="facts">
+          {facts.map((k) => (
             <div key={k}>
-              <dt>{METRICS[k].label}</dt>
+              <dt>{t(`metric.${k}`)}</dt>
               <dd>
-                {formatNumber(action.metrics[k]!)} <small>{METRICS[k].unit}</small>
+                {formatNumber(action.metrics[k]!, locale)}
+                {METRICS[k].unit && <small>{METRICS[k].unit}</small>}
               </dd>
             </div>
           ))}
         </dl>
       )}
       {action.waste.length > 0 && (
-        <div className="chips">
-          {action.waste.map((w) => (
-            <span key={w} className="chip on">{WASTE_TYPES[w]}</span>
-          ))}
+        <div className="chips" style={{ marginBottom: 18 }}>
+          {action.waste.map((w) => <span key={w} className="chip">{t(`waste.${w}`)}</span>)}
         </div>
       )}
-      {action.description && <p className="description">{action.description}</p>}
+      {action.description && <p className="notes">{action.description}</p>}
 
-      <section className="stack panel">
-        <h2>Testemunhas</h2>
-        <p className="muted small">{STATUS_HELP[status]}</p>
-        {counted.length === 0 && <p className="muted">Ninguém confirmou ainda.</p>}
-        <ul className="witnesses">
+      <section className="proof" aria-labelledby="witnesses-title">
+        <div className="proof-head">
+          <div className="spread">
+            <h2 id="witnesses-title">{t('action.witnesses')}</h2>
+            <span className="muted small">{tn('witness.count', counted.length)}</span>
+          </div>
+          <Trail witnesses={counted} status={status} large />
+          <p className="muted small">{t(`status.help.${status}`)}</p>
+        </div>
+        {counted.length === 0 && <p className="muted">{t('action.noWitnesses')}</p>}
+        <ul className="witness-list">
           {counted.map((w) => (
             <li key={w.id}>
               <strong>{displayName(w.pubkey, profiles)}</strong>
-              <span className={`tag ${w.mode}`}>{w.mode === 'presencial' ? 'esteve no local' : 'viu remotamente'}</span>
+              <span className={`witness-mode ${w.mode === 'presencial' ? 'onsite' : ''}`}>
+                {t(w.mode === 'presencial' ? 'action.onSite' : 'action.remote')}
+              </span>
               {w.note && <p>{w.note}</p>}
             </li>
           ))}
         </ul>
 
         {!isMine && !alreadyWitnessed && (
-          <div className="stack witness-box">
-            {fromQr ? <p><strong>Você estava neste mutirão?</strong></p> : <p>Você viu esta ação ou o resultado dela?</p>}
+          <div className="stack witness-form">
+            <h3>{t(fromQr ? 'action.askOnSite' : 'action.askRemote')}</h3>
             {!sk && (
               <label className="field">
-                <span>Seu nome (cria sua identidade neste aparelho)</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} required />
+                <span>{t('action.yourName')}</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="nickname" />
               </label>
             )}
             <label className="field">
-              <span>Comentário (opcional)</span>
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: ajudei no trecho norte" />
+              <span>{t('action.note')}</span>
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('action.notePlaceholder')} />
             </label>
-            <button className="button primary big" onClick={() => void witness()} disabled={busy || (!sk && !name.trim())}>
-              {fromQr ? 'Eu estive aqui' : 'Confirmar que vi'}
+            <button className="btn btn-flag btn-block" onClick={() => void witness()} disabled={busy || (!sk && !name.trim())}>
+              {t(fromQr ? 'action.iWasThere' : 'action.iSawIt')}
             </button>
           </div>
         )}
-        {alreadyWitnessed && <p className="ok">✓ Você confirmou esta ação.</p>}
+        {alreadyWitnessed && <p className="ok row"><IconCheck width={20} /> {t('action.confirmed')}</p>}
       </section>
 
       <div className="stack">
         {isMine && (
-          <button className="button primary big" onClick={() => setShowQr(true)}>
-            Mostrar QR de presença
+          <button className="btn btn-flag btn-block" onClick={() => setShowQr(true)}>
+            <IconQr /> {t('action.showQr')}
           </button>
         )}
-        <button className="button" onClick={() => void share()}>
-          {copied ? 'Link copiado' : 'Compartilhar link público'}
+        <button className="btn btn-block" onClick={() => void share()}>
+          <IconShare /> {copied ? t('action.copied') : t('action.share')}
         </button>
         {isMine && (
-          <button className="button" onClick={exportDecleanup}>
-            Exportar para DeCleanup (JSON)
+          <button className="btn btn-text" onClick={exportDecleanup}>
+            <IconDownload /> {t('action.export')}
           </button>
         )}
       </div>

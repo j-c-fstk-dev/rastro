@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rastro</title>
+<meta name="description" content="Every cleanup leaves a trace. Record real-world actions, signed by who did them and confirmed by who was there." />
+<meta property="og:title" content="Rastro" />
+<meta property="og:description" content="Every cleanup leaves a trace. Real actions, signed by who did them, confirmed by who was there." />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #eef1ec; --surface: #fbfcfa; --ink: #14251c; --stone: #5f6b63; --line: #cbd3cb;
+    --flag: #ff5b14; --flag-ink: #fff; --moss: #2f6b4a; --sky: #2b5f86; --focus: #1b5fd6;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --paper: #0e1712; --surface: #16211a; --ink: #e6ece6; --stone: #9aa79e; --line: #2a3a30;
+      --flag: #ff7a3d; --flag-ink: #1a0d05; --moss: #74c495; --sky: #8cc0ea; --focus: #8ab4ff;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Archivo', system-ui, sans-serif; font-size: 18px; line-height: 1.55; }
+  a { color: inherit; }
+  p { margin: 0; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  h1, h2, h3 { margin: 0; font-stretch: 70%; font-weight: 780; line-height: 1.02; letter-spacing: -0.01em; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+  header.top { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; }
+  .brand { display: flex; gap: 10px; align-items: center; text-decoration: none; font-stretch: 70%; font-weight: 820; font-size: 1.5rem; }
+  .brand img { width: 34px; height: 34px; }
+  .top-right { display: flex; gap: 16px; align-items: center; }
+  .lang { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .lang button { border: none; background: none; color: var(--stone); font: inherit; font-size: 0.85rem; font-weight: 700; padding: 6px 13px; cursor: pointer; }
+  .lang button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 24px; border-radius: 12px; font-weight: 700; text-decoration: none; border: 2px solid var(--ink); }
+  .btn-flag { background: var(--flag); border-color: var(--flag); color: var(--flag-ink); }
+  .link { font-weight: 650; text-underline-offset: 4px; }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 56px; align-items: center; padding: 48px 0 88px; }
+  .hero h1 { font-size: clamp(3.4rem, 9vw, 7.4rem); font-stretch: 62%; font-weight: 830; line-height: 0.9; }
+  .hero .sub { font-size: 1.3rem; max-width: 34ch; margin: 26px 0 32px; }
+  .hero .ctas { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+
+  .demo { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 22px; display: grid; gap: 16px; max-width: 420px; justify-self: end; width: 100%; }
+  .demo-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .demo-photos div { aspect-ratio: 3 / 4; border-radius: 12px; position: relative; overflow: hidden; }
+  .demo-photos .before { background: repeating-linear-gradient(135deg, #8b6f47 0 14px, #7d6340 14px 28px); }
+  .demo-photos .after { background: linear-gradient(180deg, #9cc7d9 0 38%, #e8d9b0 38% 100%); }
+  .demo-photos span { position: absolute; left: 8px; bottom: 8px; background: var(--ink); color: var(--paper); font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .demo h3 { font-size: 1.6rem; }
+  .demo .meta { color: var(--stone); font-size: 0.95rem; }
+  .demo-trail { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .trail { display: inline-flex; gap: 7px; align-items: center; }
+  .trail svg { width: 28px; height: 42px; fill: none; stroke: var(--line); stroke-width: 1.6; transition: fill 300ms, stroke 300ms; }
+  .trail svg:nth-child(even) { transform: translateY(-8px); }
+  .trail svg.on { fill: var(--flag); stroke: var(--flag); }
+  .trail.done svg { fill: var(--moss); stroke: var(--moss); }
+  .status { display: inline-flex; gap: 7px; align-items: center; font-weight: 750; font-size: 0.95rem; color: var(--stone); }
+  .status::before { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
+  .status.confirmed { color: var(--sky); } .status.confirmed::before { background: currentColor; }
+  .status.consolidated { color: var(--moss); } .status.consolidated::before { background: currentColor; }
+  .witness-line { font-size: 0.92rem; color: var(--stone); min-height: 1.5em; }
+
+  section { padding: 72px 0; border-top: 2px solid var(--ink); }
+  section h2 { font-size: clamp(2.3rem, 5vw, 3.6rem); max-width: 18ch; margin-bottom: 36px; }
+  .split h2 { margin-bottom: 0; }
+
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; counter-reset: step; }
+  .steps li { counter-increment: step; display: grid; gap: 10px; align-content: start; }
+  .steps li::before { content: counter(step); font-stretch: 62%; font-weight: 830; font-size: 4rem; line-height: 0.9; color: var(--flag); }
+  .steps h3 { font-size: 1.6rem; }
+
+  .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 56px; margin: 0; }
+  .facts div { padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .facts dt { font-stretch: 70%; font-weight: 780; font-size: 1.6rem; line-height: 1.1; margin-bottom: 8px; }
+  .facts dd { margin: 0; color: var(--stone); max-width: 46ch; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+  .split p + p { margin-top: 16px; }
+  .split ul { margin: 18px 0 0; padding-left: 20px; }
+  .split li { margin: 6px 0; }
+  .terminal { background: var(--ink); color: var(--paper); border-radius: 14px; padding: 20px 22px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92rem; line-height: 1.7; overflow-x: auto; }
+  .terminal .c { opacity: 0.6; }
+
+  .principle { background: var(--ink); color: var(--paper); border-top: none; }
+  .principle h2 { color: var(--paper); }
+  .principle p { font-size: 1.35rem; max-width: 40ch; }
+
+  footer { padding: 36px 0 56px; color: var(--stone); font-size: 0.95rem; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 24px; }
+    .demo { justify-self: start; }
+    .steps, .facts, .split { grid-template-columns: 1fr; }
+    .steps { gap: 28px; }
+    section { padding: 56px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .trail svg { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><img src="icon.svg" alt="" />Rastro</a>
+    <div class="top-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="pt" aria-pressed="false">PT</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1 data-i18n="hero.title">Every cleanup leaves a trace.</h1>
+        <p class="sub" data-i18n="hero.sub">Rastro records real-world actions, signed by the people who did them and confirmed by the people who were there. No accounts, no wallets, no central server.</p>
+        <div class="ctas">
+          <a class="btn btn-flag" href="app/" data-i18n="hero.open">Open the app</a>
+          <a class="link" href="#node" data-i18n="hero.node">Run a community node</a>
+        </div>
+      </div>
+
+      <figure class="demo" aria-labelledby="demo-title" style="margin:0">
+        <div class="demo-photos" aria-hidden="true">
+          <div class="before"><span data-i18n="demo.before">Before</span></div>
+          <div class="after"><span data-i18n="demo.after">After</span></div>
+        </div>
+        <div>
+          <h3 id="demo-title" data-i18n="demo.place">Campeche Beach, Florianópolis</h3>
+          <p class="meta" data-i18n="demo.meta">12.5 kg removed in 8 bags</p>
+        </div>
+        <div class="demo-trail">
+          <span class="trail" id="trail" aria-hidden="true"></span>
+          <span class="status" id="status" role="status" data-i18n="status.observed">Observed</span>
+        </div>
+        <p class="witness-line" id="witness-line"></p>
+      </figure>
+    </div>
+  </main>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2 data-i18n="how.title">How it works</h2>
+    <ol class="steps">
+      <li><h3 data-i18n="how.1.t">Record</h3><p data-i18n="how.1.b">Before and after photos, the place and a few numbers. It works without signal and sends itself when you are back online.</p></li>
+      <li><h3 data-i18n="how.2.t">Show the presence QR</h3><p data-i18n="how.2.b">Everyone who was there scans it and confirms with their own key. People new to Rastro join in ten seconds, right there.</p></li>
+      <li><h3 data-i18n="how.3.t">The trail fills up</h3><p data-i18n="how.3.b">Two witnesses make an action Confirmed. Five make it Consolidated. Nobody approves anything: the evidence adds up.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 data-i18n="why.title">Built for the field, not for gatekeepers</h2>
+    <dl class="facts">
+      <div><dt data-i18n="why.1.t">No sign-up, no wallet</dt><dd data-i18n="why.1.b">A key is created on the phone. No email, no password, no crypto to buy.</dd></div>
+      <div><dt data-i18n="why.2.t">Works without signal</dt><dd data-i18n="why.2.b">Records wait on the device and go out on their own when there is a connection.</dd></div>
+      <div><dt data-i18n="why.3.t">No one holds the off switch</dt><dd data-i18n="why.3.b">Records are copied across independent servers run by communities, over the open Nostr network. No single company or government can take them down.</dd></div>
+      <div><dt data-i18n="why.4.t">Private by default</dt><dd data-i18n="why.4.b">Public location is rounded to about 5 km and hidden photo data is removed before anything leaves the phone.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <div class="wrap split">
+    <h2 data-i18n="org.title">Proof you can hand to a sponsor</h2>
+    <div>
+      <p data-i18n="org.body">Groups keep a public list of members and see all their actions in one place. Any period becomes a printable impact report with totals, a map, photos and a verification link for every action.</p>
+      <ul>
+        <li data-i18n="org.1">Totals count only actions confirmed by witnesses</li>
+        <li data-i18n="org.2">Export in the DeCleanup Network format</li>
+        <li data-i18n="org.3">Free, open source, no subscription required</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="node">
+  <div class="wrap split">
+    <div>
+      <h2 data-i18n="node.title">Keep your community’s records at home</h2>
+      <p style="margin-top:20px" data-i18n="node.body">An old laptop or a mini PC is enough. One command starts a relay, a photo server and a Tor address. Nodes copy each other, so no single machine matters.</p>
+      <p style="margin-top:20px"><a class="link" href="https://github.com/j-c-fstk-dev/rastro/tree/main/node" data-i18n="node.link">Node setup guide</a></p>
+    </div>
+    <pre class="terminal"><span class="c">$ git clone https://github.com/j-c-fstk-dev/rastro</span>
+<span class="c">$ cd rastro/node</span>
+$ ./start.sh</pre>
+  </div>
+</section>
+
+<section class="principle">
+  <div class="wrap">
+    <h2 data-i18n="principle.title">Truth is not voted</h2>
+    <p style="margin-top:24px" data-i18n="principle.body">Rastro follows Aletheia: a record holds because it is signed and witnessed, not because an authority approved it or a majority agreed.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span data-i18n="footer.license">Free software under the AGPL-3.0. Built on Nostr.</span>
+    <a class="link" href="https://github.com/j-c-fstk-dev/rastro">GitHub</a>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const pt = {
+    'hero.title': 'Todo mutirão deixa um rastro.',
+    'hero.sub': 'O Rastro registra ações no mundo real, assinadas por quem fez e confirmadas por quem estava lá. Sem cadastro, sem carteira, sem servidor central.',
+    'hero.open': 'Abrir o app',
+    'hero.node': 'Rodar um nó comunitário',
+    'demo.before': 'Antes', 'demo.after': 'Depois',
+    'demo.place': 'Praia do Campeche, Florianópolis',
+    'demo.meta': '12,5 kg removidos em 8 sacos',
+    'status.observed': 'Observado', 'status.confirmed': 'Confirmado', 'status.consolidated': 'Consolidado',
+    'how.title': 'Como funciona',
+    'how.1.t': 'Registre', 'how.1.b': 'Fotos de antes e depois, o lugar e alguns números. Funciona sem sinal e se envia sozinho quando a conexão volta.',
+    'how.2.t': 'Mostre o QR de presença', 'how.2.b': 'Todo mundo que estava lá escaneia e confirma com a própria chave. Quem ainda não usa o Rastro entra em dez segundos, ali mesmo.',
+    'how.3.t': 'A trilha se preenche', 'how.3.b': 'Duas testemunhas tornam a ação Confirmada. Cinco, Consolidada. Ninguém aprova nada: a evidência se acumula.',
+    'why.title': 'Feito para o campo, não para porteiros',
+    'why.1.t': 'Sem cadastro, sem carteira', 'why.1.b': 'A chave é criada no celular. Sem e-mail, sem senha, sem cripto para comprar.',
+    'why.2.t': 'Funciona sem sinal', 'why.2.b': 'Os registros esperam no aparelho e saem sozinhos quando há conexão.',
+    'why.3.t': 'Ninguém tem o botão de desligar', 'why.3.b': 'Os registros são copiados em servidores independentes mantidos por comunidades, na rede aberta Nostr. Nenhuma empresa ou governo sozinho consegue derrubá-los.',
+    'why.4.t': 'Privado por padrão', 'why.4.b': 'A localização pública é arredondada para cerca de 5 km e os dados escondidos das fotos são removidos antes de qualquer coisa sair do celular.',
+    'org.title': 'Prova que você entrega a um patrocinador',
+    'org.body': 'Grupos mantêm uma lista pública de membros e veem todas as suas ações num só lugar. Qualquer período vira um relatório de impacto para imprimir, com totais, mapa, fotos e um link de verificação para cada ação.',
+    'org.1': 'Os totais contam só ações confirmadas por testemunhas',
+    'org.2': 'Exportação no formato da DeCleanup Network',
+    'org.3': 'Gratuito, código aberto, sem assinatura obrigatória',
+    'node.title': 'Guarde os registros da sua comunidade em casa',
+    'node.body': 'Um notebook antigo ou um mini PC basta. Um comando sobe um relay, um servidor de fotos e um endereço Tor. Os nós copiam uns aos outros, então nenhuma máquina sozinha importa.',
+    'node.link': 'Guia de instalação do nó',
+    'principle.title': 'A verdade não é votada',
+    'principle.body': 'O Rastro segue a Aletheia: um registro se sustenta porque é assinado e testemunhado, não porque uma autoridade aprovou ou uma maioria concordou.',
+    'footer.license': 'Software livre sob AGPL-3.0. Feito sobre Nostr.',
+  }
+  const witnessesEn = ['Bruno was there', 'Carla was there', 'Dani saw it remotely', 'Eli was there', 'Fê was there']
+  const witnessesPt = ['Bruno esteve no local', 'Carla esteve no local', 'Dani viu remotamente', 'Eli esteve no local', 'Fê esteve no local']
+  const en = {}
+  document.querySelectorAll('[data-i18n]').forEach((el) => { en[el.dataset.i18n] = el.textContent })
+  en['status.confirmed'] = 'Confirmed'
+  en['status.consolidated'] = 'Consolidated'
+
+  let lang = 'en'
+  try { lang = localStorage.getItem('rastro.lang') === 'pt' ? 'pt' : 'en' } catch {}
+  const dict = () => (lang === 'pt' ? pt : en)
+  const apply = () => {
+    document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en-US'
+    document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = dict()[el.dataset.i18n] ?? en[el.dataset.i18n] })
+    document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)))
+    render()
+  }
+  document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => {
+    lang = b.dataset.lang
+    try { localStorage.setItem('rastro.lang', lang) } catch {}
+    apply()
+  }))
+
+  // The trail: witnesses arrive one at a time and the status follows.
+  const trail = document.getElementById('trail')
+  const status = document.getElementById('status')
+  const line = document.getElementById('witness-line')
+  const foot = '<path d="M10 29c-4.2 0-6.4-3.6-6.4-8.4C3.6 15.4 6.2 11 10 11s6.4 4.4 6.4 9.6c0 4.8-2.2 8.4-6.4 8.4z"/><circle cx="5" cy="6.5" r="2.1"/><circle cx="9.6" cy="4.2" r="2"/><circle cx="14" cy="5.2" r="1.8"/><circle cx="17" cy="8.6" r="1.5"/>'
+  trail.innerHTML = Array.from({ length: 5 }, () => `<svg viewBox="0 0 20 30">${foot}</svg>`).join('')
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  let count = reduced ? 5 : 0
+  function render() {
+    const prints = trail.querySelectorAll('svg')
+    prints.forEach((p, i) => p.classList.toggle('on', i < count))
+    const s = count >= 5 ? 'consolidated' : count >= 2 ? 'confirmed' : 'observed'
+    trail.classList.toggle('done', s === 'consolidated')
+    status.className = `status ${s}`
+    status.textContent = dict()[`status.${s}`]
+    line.textContent = count > 0 ? (lang === 'pt' ? witnessesPt : witnessesEn)[count - 1] : ''
+  }
+  apply()
+  if (!reduced) {
+    const step = () => {
+      count = count >= 5 ? 0 : count + 1
+      render()
+      setTimeout(step, count >= 5 ? 3200 : 1300)
+    }
+    setTimeout(step, 900)
+  }
+})()
+</script>
+</body>
+</html>

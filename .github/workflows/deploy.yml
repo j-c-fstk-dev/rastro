@@ -27,10 +27,15 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: /${{ github.event.repository.name }}/app/
+      # Landing page at the root, app under /app/.
+      - run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          cp -r dist _site/app
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: _site
 
   deploy:
     needs: build

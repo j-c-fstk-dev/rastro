@@ -1,31 +1,35 @@
 import type { Event, EventTemplate } from 'nostr-tools/pure'
-import { KIND_ACTION, KIND_WITNESS } from './kinds'
+import { KIND_ACTION, KIND_COLLECTIVE, KIND_WITNESS } from './kinds'
 
-export const ACTION_TYPES = { cleanup: 'Limpeza' } as const
-export type ActionType = keyof typeof ACTION_TYPES
+export const ACTION_TYPES = ['cleanup'] as const
+export type ActionType = (typeof ACTION_TYPES)[number]
 
+/** `step` marks whole-number counts, which get +/- buttons in the form. */
 export const METRICS = {
-  weight_kg: { label: 'Peso removido', unit: 'kg' },
-  bags: { label: 'Sacos', unit: '' },
-  area_sqm: { label: 'Área limpa', unit: 'm²' },
-  duration_min: { label: 'Duração', unit: 'min' },
-  participants: { label: 'Participantes', unit: '' },
-  recyclables_kg: { label: 'Recicláveis', unit: 'kg' },
+  weight_kg: { unit: 'kg', step: false },
+  bags: { unit: '', step: true },
+  area_sqm: { unit: 'm²', step: false },
+  duration_min: { unit: 'min', step: false },
+  participants: { unit: '', step: true },
+  recyclables_kg: { unit: 'kg', step: false },
 } as const
 export type MetricKey = keyof typeof METRICS
 
-export const WASTE_TYPES = {
-  plastic: 'Plástico',
-  glass: 'Vidro',
-  metal: 'Metal',
-  paper: 'Papel',
-  organic: 'Orgânico',
-  textile: 'Tecido',
-  electronic: 'Eletrônico',
-  cigarette: 'Bitucas',
-  other: 'Outros',
-} as const
-export type WasteType = keyof typeof WASTE_TYPES
+export const WASTE_TYPES = [
+  'plastic',
+  'glass',
+  'metal',
+  'paper',
+  'organic',
+  'textile',
+  'electronic',
+  'cigarette',
+  'other',
+] as const
+export type WasteType = (typeof WASTE_TYPES)[number]
+
+const isActionType = (v: string): v is ActionType => (ACTION_TYPES as readonly string[]).includes(v)
+const isWasteType = (v: string): v is WasteType => (WASTE_TYPES as readonly string[]).includes(v)
 
 export type PhotoRole = 'before' | 'after'
 
@@ -41,6 +45,8 @@ export interface ActionDraft {
   description: string
   place?: string
   geohash?: string
+  /** Address of the group this action belongs to: `33910:<owner pubkey>:<d>`. */
+  collective?: string
   metrics: Partial<Record<MetricKey, number>>
   waste: WasteType[]
   photos: Photo[]
@@ -68,7 +74,8 @@ export const APP_TAG = ['client', 'rastro', '0.1']
 export function buildActionTemplate(draft: ActionDraft, now = Math.floor(Date.now() / 1000)): EventTemplate {
   const tags: string[][] = [['t', draft.type]]
   const weight = draft.metrics.weight_kg
-  tags.push(['alt', `Rastro: ação de ${ACTION_TYPES[draft.type].toLowerCase()}${weight ? ` com ${weight} kg removidos` : ''}`])
+  tags.push(['alt', `Rastro: ${draft.type} action${weight ? `, ${weight} kg removed` : ''}`])
+  if (draft.collective) tags.push(['a', draft.collective])
   if (draft.geohash) tags.push(['g', draft.geohash])
   if (draft.place) tags.push(['location', draft.place])
   for (const [key, value] of Object.entries(draft.metrics)) {
@@ -97,13 +104,14 @@ function parseImeta(tag: string[]): Photo | null {
 
 export function parseAction(event: Event): Action | null {
   if (event.kind !== KIND_ACTION) return null
-  const type = event.tags.find((t) => t[0] === 't' && t[1] in ACTION_TYPES)?.[1] as ActionType | undefined
+  const type = event.tags.find((t) => t[0] === 't' && isActionType(t[1]))?.[1] as ActionType | undefined
   if (!type) return null
   const metrics: Action['metrics'] = {}
   const waste: WasteType[] = []
   const photos: Photo[] = []
   let geohash: string | undefined
   let place: string | undefined
+  let collective: string | undefined
   for (const tag of event.tags) {
     switch (tag[0]) {
       case 'm': {
@@ -112,7 +120,7 @@ export function parseAction(event: Event): Action | null {
         break
       }
       case 'waste':
-        if (tag[1] in WASTE_TYPES) waste.push(tag[1] as WasteType)
+        if (isWasteType(tag[1])) waste.push(tag[1])
         break
       case 'imeta': {
         const photo = parseImeta(tag)
@@ -125,6 +133,9 @@ export function parseAction(event: Event): Action | null {
       case 'location':
         place ??= tag[1]
         break
+      case 'a':
+        if (tag[1]?.startsWith(`${KIND_COLLECTIVE}:`)) collective ??= tag[1]
+        break
     }
   }
   return {
@@ -135,6 +146,7 @@ export function parseAction(event: Event): Action | null {
     description: event.content,
     place,
     geohash,
+    collective,
     metrics,
     waste,
     photos,
@@ -155,7 +167,7 @@ export function buildWitnessTemplate(
       ['e', action.id],
       ['p', action.pubkey],
       ['mode', mode],
-      ['alt', 'Rastro: testemunho de uma ação'],
+      ['alt', 'Rastro: witness of an action'],
       APP_TAG,
     ],
   }

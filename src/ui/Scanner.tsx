@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { go } from '../router'
+import { useI18n } from '../i18n'
 
 // BarcodeDetector is not in TypeScript's DOM lib yet.
 interface DetectedBarcode { rawValue: string }
@@ -10,16 +10,14 @@ declare global {
   }
 }
 
-/** Extracts the in-app route ("a/<ref>?w=1") from a scanned Rastro link. */
-export function routeFromScan(text: string): string | null {
-  const match = text.match(/#\/(a\/[^\s]+)/)
-  return match ? match[1] : null
-}
+export const canScan = () => typeof window.BarcodeDetector === 'function'
 
-export function Scan() {
+/** Camera QR reader. `onResult` returns true when the code was usable, which stops scanning. */
+export function Scanner({ onResult, wrongCode }: { onResult: (text: string) => boolean; wrongCode: string }) {
+  const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState('')
-  const supported = typeof window.BarcodeDetector === 'function'
+  const supported = canScan()
 
   useEffect(() => {
     if (!supported) return
@@ -32,9 +30,8 @@ export function Scan() {
       if (stopped || !video) return
       if (video.readyState >= 2) {
         const codes = await detector.detect(video).catch(() => [])
-        const route = codes.map((c) => routeFromScan(c.rawValue)).find(Boolean)
-        if (route) return go(route)
-        if (codes.length > 0) setError('Esse QR não é de uma ação do Rastro.')
+        if (codes.some((c) => onResult(c.rawValue))) return
+        if (codes.length > 0) setError(wrongCode)
       }
       setTimeout(() => void tick(), 300)
     }
@@ -49,28 +46,24 @@ export function Scan() {
         }
         void tick()
       })
-      .catch(() => setError('Sem acesso à câmera. Autorize a câmera ou use o app de câmera do celular.'))
+      .catch(() => setError(t('scan.noCamera')))
 
     return () => {
       stopped = true
-      stream?.getTracks().forEach((t) => t.stop())
+      stream?.getTracks().forEach((track) => track.stop())
     }
-  }, [supported])
+  }, [supported, onResult, wrongCode, t])
 
   return (
-    <main className="page">
-      <h1>Escanear QR de presença</h1>
+    <div className="stack">
       {supported ? (
         <div className="scanner">
           <video ref={videoRef} playsInline muted />
         </div>
       ) : (
-        <p>
-          Este navegador não lê QR codes por aqui. Abra o <strong>app de câmera do celular</strong> e aponte para o QR:
-          o link abre direto no Rastro.
-        </p>
+        <p>{t('scan.unsupported')}</p>
       )}
       {error && <p className="error">{error}</p>}
-    </main>
+    </div>
   )
 }

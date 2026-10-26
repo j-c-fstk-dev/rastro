@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Served from https://<user>.github.io/rastro/ by default.
-// Set BASE_PATH=/ when hosting at the root of a domain.
-const base = process.env.BASE_PATH ?? '/rastro/'
+// The landing page lives at https://<user>.github.io/rastro/ and the app under /rastro/app/.
+// Set BASE_PATH (e.g. /app/) when hosting elsewhere.
+const base = process.env.BASE_PATH ?? '/rastro/app/'
 
 export default defineConfig({
   base,
@@ -16,8 +16,8 @@ export default defineConfig({
       manifest: {
         name: 'Rastro',
         short_name: 'Rastro',
-        description: 'Ações reais, assinadas por quem fez, confirmadas por quem estava lá.',
-        lang: 'pt-BR',
+        description: 'Real actions, signed by who did them, confirmed by who was there.',
+        lang: 'en-US',
         theme_color: '#1f4d2b',
         background_color: '#f6f3ea',
         display: 'standalone',
@@ -29,7 +29,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
     }),
   ],

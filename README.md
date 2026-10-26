@@ -1,59 +1,63 @@
 # Rastro
 
-**Ações reais, assinadas por quem fez, confirmadas por quem estava lá.**
+**Real actions, signed by who did them, confirmed by who was there.**
 
-Rastro é um app para registrar ações regenerativas no mundo real — começando por mutirões de limpeza —
-e para que as pessoas presentes confirmem essas ações com a própria assinatura. Funciona sem internet,
-não tem cadastro nem carteira, e não depende de nenhum servidor central: é construído sobre
-[Nostr](https://nostr.com), então nenhuma empresa ou governo consegue apagar o que foi registrado.
+Rastro records real-world regenerative actions, starting with community cleanups, and lets the
+people who were there confirm them with their own signature. It works without signal, needs no
+account or wallet, and runs on [Nostr](https://nostr.com), so no single company or government can
+take the records down.
 
-Segue os princípios da Aletheia: a verdade não é decidida por votação nem por autoridade —
-ela emerge de registros assinados e de testemunhos públicos.
+It follows the principles of Aletheia: a record holds because it is signed and witnessed, not
+because an authority approved it or a majority voted.
 
-## Como funciona
+*Português: o app está disponível em inglês e português (botão EN/PT).*
 
-1. **Identidade em 10 segundos.** Abra o app, digite um nome. Uma chave é criada no aparelho.
-2. **Registre a ação.** Fotos de antes e depois, local, números (kg, sacos, área…). Sem sinal? Fica guardada e sai sozinha depois.
-3. **Mostre o QR de presença.** Quem estava lá escaneia e toca em "Eu estive aqui". Cada testemunho é assinado pela chave de quem confirmou.
-4. **O status aparece sozinho.** *Observado* → *Confirmado* (2 testemunhas) → *Consolidado* (5 testemunhas). Ninguém aprova nada.
-5. **Compartilhe ou exporte.** Link público verificável e exportação no formato da [DeCleanup Network](https://decleanup.net).
+## How it works
 
-Privacidade por padrão: localização pública aproximada (~5 km), metadados das fotos removidos.
+1. **Identity in ten seconds.** Open the app and type a name. A key is created on the device.
+2. **Record the action.** Before and after photos, place, numbers (kg, bags, area…). No signal? It waits on the phone and goes out later.
+3. **Show the presence QR.** People who were there scan it and tap "I was there". Each testimony is signed with their own key.
+4. **The trail fills up.** *Observed* → *Confirmed* (2 witnesses) → *Consolidated* (5 witnesses, or 2 group members who were there). Nobody approves anything.
+5. **Prove it.** Group pages, a printable impact report with a map and verification links, and export in the [DeCleanup Network](https://decleanup.net) format.
 
-## Rodando localmente
+Private by default: public location is rounded to about 5 km and photo metadata is stripped.
+
+## Repository
+
+```
+src/          the app (React + Vite PWA)
+├── model/    actions, witnesses, groups and status rules (with tests)
+├── nostr/    keys, relays, local storage, offline outbox
+├── media/    photo compression and Blossom upload
+├── i18n/     English (source) and Portuguese
+├── screens/  app screens
+└── ui/       shared components
+site/         landing page
+node/         community node: relay + photo server + Tor (see node/README.md)
+docs/         v1 specification
+```
+
+## Develop
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173/rastro/
-npm test           # testes do modelo de dados e regras de status
-npm run build      # gera dist/ (PWA)
+npm run dev        # http://localhost:5173/rastro/app/
+npm test           # data model and status rules
+npm run build      # production PWA in dist/
 ```
 
-## Publicação
+## Publish
 
-Cada push na `main` publica o app no GitHub Pages (`.github/workflows/deploy.yml`).
-Na primeira vez: **Settings → Pages → Source: GitHub Actions**.
+Every push to `main` publishes to GitHub Pages: the landing page at `/rastro/` and the app at
+`/rastro/app/` (`.github/workflows/deploy.yml`). The first time, set
+**Settings → Pages → Source: GitHub Actions**.
 
-## Infraestrutura
+## Infrastructure
 
-Por padrão o app usa relays Nostr públicos e servidores de fotos [Blossom](https://github.com/hzrd149/blossom) públicos.
-Em **Você → Servidores** dá para apontar para o nó da sua comunidade. Um pacote de nó com um comando
-(relay + Blossom + Tor) está no plano (etapa C da especificação).
+By default the app uses public Nostr relays and public [Blossom](https://github.com/hzrd149/blossom)
+photo servers. Communities can run their own node with one command (see [node/](node/README.md))
+and point the app to it under **You → Servers**.
 
-## Estrutura
+## License
 
-```
-src/
-├── model/     # Ação, Testemunho, regras de status (com testes)
-├── nostr/     # chaves, relays, armazenamento local, fila offline
-├── media/     # compressão de fotos e envio Blossom
-├── geo/       # geohash
-├── export/    # exportação DeCleanup
-├── screens/   # telas
-└── ui/        # componentes
-docs/V1_SPEC.md  # especificação da v1
-```
-
-## Estado
-
-Demo (etapa A da [especificação](docs/V1_SPEC.md)). Os números de `kind` dos eventos são provisórios.
+[AGPL-3.0](LICENSE). If you run a modified version as a service, you must share its source.

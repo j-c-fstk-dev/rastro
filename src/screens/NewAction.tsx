@@ -3,7 +3,7 @@ import { encodeGeohash } from '../geo/geohash'
 import { useI18n } from '../i18n'
 import { blobUrl } from '../media/blossom'
 import { prepareImage, type PreparedImage } from '../media/image'
-import { buildActionTemplate, METRICS, WASTE_TYPES, type MetricKey, type PhotoRole, type WasteType } from '../model/action'
+import { ACTION_TYPES, buildActionTemplate, isActionType, METRICS, TYPE_SPEC, type ActionType, type MetricKey, type PhotoRole } from '../model/action'
 import type { Collective } from '../model/collective'
 import { getBlossomServers } from '../nostr/config'
 import { loadMyCollectives } from '../nostr/data'
@@ -11,7 +11,8 @@ import { sign } from '../nostr/keys'
 import { enqueueBlob, enqueueEvent } from '../nostr/outbox'
 import { go } from '../router'
 import { useSession } from '../session'
-import { IconCamera, IconCheck, IconPin } from '../ui/icons'
+import { IconBag, IconCamera, IconCheck, IconGroup, IconHive, IconPin, IconSprout, IconTree } from '../ui/icons'
+import { optionLabel } from '../ui/labels'
 import { LocationPicker, type Point } from '../ui/LocationPicker'
 
 type Photos = Partial<Record<PhotoRole, PreparedImage & { preview: string }>>
@@ -29,6 +30,20 @@ function readLastPoint(): Point | null {
 }
 
 const LAST_GROUP_KEY = 'rastro.lastGroup'
+const LAST_TYPE_KEY = 'rastro.lastType'
+
+const TYPE_ICONS: Record<ActionType, typeof IconBag> = {
+  cleanup: IconBag,
+  planting: IconSprout,
+  apiary: IconHive,
+  agroforestry: IconTree,
+  community: IconGroup,
+}
+
+function readLastType(): ActionType {
+  const stored = localStorage.getItem(LAST_TYPE_KEY) ?? ''
+  return isActionType(stored) ? stored : 'cleanup'
+}
 
 function Stepper({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const { t } = useI18n()
@@ -70,7 +85,8 @@ export function NewAction() {
   const [point, setPoint] = useState<Point | null>(null)
   const [precise, setPrecise] = useState(false)
   const [metrics, setMetrics] = useState<Partial<Record<MetricKey, string>>>({})
-  const [waste, setWaste] = useState<WasteType[]>([])
+  const [type, setType] = useState<ActionType>(readLastType)
+  const [options, setOptions] = useState<string[]>([])
   const [description, setDescription] = useState('')
   const [groups, setGroups] = useState<Collective[]>([])
   const [group, setGroup] = useState(() => localStorage.getItem(LAST_GROUP_KEY) ?? '')
@@ -121,7 +137,15 @@ export function NewAction() {
     setGeoStatus('map')
   }
 
-  const toggleWaste = (w: WasteType) => setWaste((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]))
+  const toggleOption = (o: string) => setOptions((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]))
+
+  const chooseType = (next: ActionType) => {
+    setType(next)
+    // Choices belong to a type; numbers are kept in case the person switches back.
+    setOptions([])
+  }
+
+  const spec = TYPE_SPEC[type]
 
   const publish = async (e: FormEvent) => {
     e.preventDefault()
@@ -134,24 +158,26 @@ export function NewAction() {
       for (const [, p] of chosen) await enqueueBlob(p.sha256, p.blob)
 
       const numbers: Partial<Record<MetricKey, number>> = {}
-      for (const [key, raw] of Object.entries(metrics)) {
+      for (const key of spec.metrics) {
+        const raw = metrics[key]
         const value = Number(String(raw).replace(',', '.'))
-        if (raw && Number.isFinite(value) && value >= 0) numbers[key as MetricKey] = value
+        if (raw && Number.isFinite(value) && value >= 0) numbers[key] = value
       }
 
       if (point && geoStatus !== 'off') localStorage.setItem(LAST_POINT_KEY, JSON.stringify(point))
       const validGroup = groups.some((g) => g.address === group) ? group : undefined
       localStorage.setItem(LAST_GROUP_KEY, validGroup ?? '')
+      localStorage.setItem(LAST_TYPE_KEY, type)
       const event = sign(
         sk,
         buildActionTemplate({
-          type: 'cleanup',
+          type,
           description: description.trim(),
           place: place.trim() || undefined,
           geohash: point && geoStatus !== 'off' ? encodeGeohash(point.lat, point.lon, precise ? 7 : 5) : undefined,
           collective: validGroup,
           metrics: numbers,
-          waste,
+          options,
           photos: chosen.map(([role, p]) => ({ role, sha256: p.sha256, mime: p.mime, url: blobUrl(server, p.sha256) })),
         }),
       )
@@ -169,6 +195,21 @@ export function NewAction() {
     <main className="page">
       <form onSubmit={publish} className="stack-lg">
         <h1>{t('new.title')}</h1>
+
+        <section className="stack">
+          <h2>{t('new.type')}</h2>
+          <div className="type-grid" role="group" aria-label={t('new.type')}>
+            {ACTION_TYPES.map((ty) => {
+              const Icon = TYPE_ICONS[ty]
+              return (
+                <button type="button" key={ty} aria-pressed={type === ty} className="type-option" onClick={() => chooseType(ty)}>
+                  <Icon />
+                  <span>{t(`type.${ty}`)}</span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
 
         <section className="stack">
           <h2>{t('new.photos')}</h2>
@@ -237,7 +278,7 @@ export function NewAction() {
         <section className="stack">
           <h2>{t('new.numbers')}</h2>
           <div className="metrics-grid">
-            {(Object.keys(METRICS) as MetricKey[]).map((key) => {
+            {spec.metrics.map((key: MetricKey) => {
               const label = t(`metric.${key}`)
               const set = (v: string) => setMetrics((m) => ({ ...m, [key]: v }))
               return (
@@ -254,11 +295,11 @@ export function NewAction() {
               )
             })}
           </div>
-          <span className="label">{t('new.wasteTypes')}</span>
+          <span className="label">{t(`options.${type}`)}</span>
           <div className="chips">
-            {WASTE_TYPES.map((w) => (
-              <button type="button" key={w} className="chip" aria-pressed={waste.includes(w)} onClick={() => toggleWaste(w)}>
-                {t(`waste.${w}`)}
+            {spec.options.map((o: string) => (
+              <button type="button" key={o} className="chip" aria-pressed={options.includes(o)} onClick={() => toggleOption(o)}>
+                {optionLabel(t, type, o)}
               </button>
             ))}
           </div>

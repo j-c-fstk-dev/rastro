@@ -183,15 +183,15 @@ span.chip { cursor: default; min-height: 0; padding: 4px 12px; }
 
 /* The trail: one footprint per witness, up to five. */
 .trail { display: inline-flex; align-items: center; gap: 3px; }
-.trail svg { width: 15px; height: 22px; }
+.trail svg { width: 13px; height: 24px; }
 .trail .print { fill: none; stroke: var(--line); stroke-width: 1.6; }
-.trail .print:nth-child(even) { transform: translateY(-4px); }
+.trail .print:nth-child(even) { transform: translateY(-4px) scaleX(-1); }
 .trail .print.remote { stroke: var(--flag); stroke-width: 2; }
 .trail .print.onsite { fill: var(--flag); stroke: var(--flag); }
 .trail.done .print { fill: var(--moss); stroke: var(--moss); }
-.trail-lg svg { width: 30px; height: 44px; }
+.trail-lg svg { width: 24px; height: 44px; }
 .trail-lg { gap: 8px; }
-.trail-lg .print:nth-child(even) { transform: translateY(-9px); }
+.trail-lg .print:nth-child(even) { transform: translateY(-9px) scaleX(-1); }
 
 /* Home / log */
 .home-head { display: grid; gap: 14px; margin: 8px 0 22px; }
@@ -340,3 +340,13 @@ code { font-size: 0.8rem; background: var(--paper); padding: 8px 10px; border-ra
 .geo-status svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
 .help { background: var(--flag-soft); border-radius: var(--r-sm); padding: 12px 14px; font-size: 0.92rem; }
 .help ol { margin: 6px 0 0; padding-left: 20px; }
+
+/* Action type choice */
+.type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.type-option {
+  display: grid; justify-items: center; gap: 6px; padding: 14px 6px 12px; min-height: 84px;
+  border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 0.88rem; font-weight: 650; line-height: 1.2; text-align: center; cursor: pointer;
+}
+.type-option svg { width: 28px; height: 28px; }
+.type-option[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--paper); }

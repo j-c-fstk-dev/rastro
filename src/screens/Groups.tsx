@@ -12,6 +12,7 @@ import { canScan, Scanner } from '../ui/Scanner'
 import { dayOf, displayName, monthOf } from '../ui/format'
 import { IconPlus, IconPrint } from '../ui/icons'
 import { StatusLabel, Trail } from '../ui/Trail'
+import { actionTitle } from '../ui/labels'
 import { useProfiles } from '../ui/useProfiles'
 
 export function GroupsPage() {
@@ -105,7 +106,7 @@ export function GroupPage({ refText }: { refText: string }) {
                 <a className="entry" href={`#/a/${a.id}`} style={{ gridTemplateColumns: '52px 1fr' }}>
                   <div className="entry-date"><b>{dayOf(a.createdAt)}</b><span>{monthOf(a.createdAt, locale)}</span></div>
                   <div className="entry-main">
-                    <h3>{a.place || t('home.untitled')}</h3>
+                    <h3>{actionTitle(t, a)}</h3>
                     <span className="entry-meta">{t('home.by', { name: displayName(a.pubkey, profiles) })}</span>
                     <div className="row"><Trail witnesses={ws} status={status} /><StatusLabel status={status} /></div>
                   </div>

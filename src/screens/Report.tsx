@@ -10,10 +10,11 @@ import { ActionsMap } from '../ui/ActionsMap'
 import { displayName, formatDate, formatNumber } from '../ui/format'
 import { IconPrint } from '../ui/icons'
 import { Photo } from '../ui/Photo'
+import { actionTitle, headlineText } from '../ui/labels'
 import { useProfiles } from '../ui/useProfiles'
 
 const toInput = (d: Date) => d.toISOString().slice(0, 10)
-const TOTALS: MetricKey[] = ['weight_kg', 'bags', 'area_sqm', 'recyclables_kg', 'participants', 'duration_min']
+const TOTALS = Object.keys(METRICS) as MetricKey[]
 
 /** Printable impact report for a group, or for the actions this person recorded. */
 export function Report({ groupText }: { groupText?: string }) {
@@ -59,7 +60,7 @@ export function Report({ groupText }: { groupText?: string }) {
   const pending = rows.length - counted.length
   const totals = TOTALS.map((k) => ({ key: k, sum: counted.reduce((s, r) => s + (r.action.metrics[k] ?? 0), 0) })).filter((x) => x.sum > 0)
   const photos = counted.flatMap((r) => r.action.photos.filter((p) => p.role === 'after')).slice(0, 8)
-  const label = useCallback((a: Action) => a.place || t('home.untitled'), [t])
+  const label = useCallback((a: Action) => actionTitle(t, a), [t])
   const scope = group ? t('report.scope.group', { name: group.name }) : t('report.scope.mine', { name: pubkey ? displayName(pubkey, profiles) : '' })
 
   return (
@@ -106,13 +107,13 @@ export function Report({ groupText }: { groupText?: string }) {
           )}
 
           <section className="stack">
-            <h2>{tn('report.cleanups', rows.length)}</h2>
+            <h2>{tn('report.count', rows.length)}</h2>
             <table className="report-table">
               <thead>
                 <tr>
                   <th>{t('report.date')}</th>
                   <th>{t('report.place')}</th>
-                  <th className="num">kg</th>
+                  <th>{t('report.impact')}</th>
                   <th>{t('report.status')}</th>
                 </tr>
               </thead>
@@ -121,7 +122,7 @@ export function Report({ groupText }: { groupText?: string }) {
                   <tr key={action.id}>
                     <td>{formatDate(action.createdAt, locale)}</td>
                     <td><a href={absoluteLink(`a/${actionRef(action)}`)}>{label(action)}</a></td>
-                    <td className="num">{action.metrics.weight_kg !== undefined ? formatNumber(action.metrics.weight_kg, locale) : '–'}</td>
+                    <td>{headlineText(t, locale, action) ?? '–'}</td>
                     <td>{t(`status.${status}`)}, {tn('witness.count', ws.length)}</td>
                   </tr>
                 ))}

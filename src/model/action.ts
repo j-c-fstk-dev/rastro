@@ -1,7 +1,7 @@
 import type { Event, EventTemplate } from 'nostr-tools/pure'
 import { KIND_ACTION, KIND_COLLECTIVE, KIND_WITNESS } from './kinds'
 
-export const ACTION_TYPES = ['cleanup'] as const
+export const ACTION_TYPES = ['cleanup', 'planting', 'apiary', 'agroforestry', 'community'] as const
 export type ActionType = (typeof ACTION_TYPES)[number]
 
 /** `step` marks whole-number counts, which get +/- buttons in the form. */
@@ -12,24 +12,59 @@ export const METRICS = {
   duration_min: { unit: 'min', step: false },
   participants: { unit: '', step: true },
   recyclables_kg: { unit: 'kg', step: false },
+  plants: { unit: '', step: true },
+  species: { unit: '', step: true },
+  hives: { unit: '', step: true },
+  honey_kg: { unit: 'kg', step: false },
+  biomass_kg: { unit: 'kg', step: false },
+  people_reached: { unit: '', step: true },
 } as const
 export type MetricKey = keyof typeof METRICS
 
-export const WASTE_TYPES = [
-  'plastic',
-  'glass',
-  'metal',
-  'paper',
-  'organic',
-  'textile',
-  'electronic',
-  'cigarette',
-  'other',
-] as const
-export type WasteType = (typeof WASTE_TYPES)[number]
+export const WASTE_TYPES = ['plastic', 'glass', 'metal', 'paper', 'organic', 'textile', 'electronic', 'cigarette', 'other'] as const
 
-const isActionType = (v: string): v is ActionType => (ACTION_TYPES as readonly string[]).includes(v)
-const isWasteType = (v: string): v is WasteType => (WASTE_TYPES as readonly string[]).includes(v)
+/**
+ * What each type of action records: its numbers (in form order, the first is the headline)
+ * and one set of choices, stored under `optionTag` (e.g. ['waste', 'plastic']).
+ */
+export const TYPE_SPEC = {
+  cleanup: {
+    metrics: ['weight_kg', 'bags', 'area_sqm', 'duration_min', 'participants', 'recyclables_kg'],
+    optionTag: 'waste',
+    options: WASTE_TYPES,
+  },
+  planting: {
+    metrics: ['plants', 'species', 'area_sqm', 'participants', 'duration_min'],
+    optionTag: 'plant',
+    options: ['native', 'fruit', 'seeds', 'nursery', 'other'],
+  },
+  apiary: {
+    metrics: ['hives', 'honey_kg', 'participants', 'duration_min'],
+    optionTag: 'activity',
+    options: ['inspection', 'harvest', 'split', 'feeding', 'swarm_rescue', 'other'],
+  },
+  agroforestry: {
+    metrics: ['plants', 'area_sqm', 'biomass_kg', 'participants', 'duration_min'],
+    optionTag: 'activity',
+    options: ['planting', 'pruning', 'mulching', 'harvest', 'irrigation', 'other'],
+  },
+  community: {
+    metrics: ['participants', 'people_reached', 'duration_min'],
+    optionTag: 'activity',
+    options: ['workshop', 'maintenance', 'mapping', 'gathering', 'other'],
+  },
+} as const satisfies Record<string, { metrics: readonly MetricKey[]; optionTag: string; options: readonly string[] }>
+
+export const isActionType = (v: string): v is ActionType => (ACTION_TYPES as readonly string[]).includes(v)
+
+/** The number that best summarises an action of this type, if it was recorded. */
+export function headline(action: Pick<ActionDraft, 'type' | 'metrics'>): { key: MetricKey; value: number } | null {
+  for (const key of TYPE_SPEC[action.type].metrics) {
+    const value = action.metrics[key]
+    if (value !== undefined) return { key, value }
+  }
+  return null
+}
 
 export type PhotoRole = 'before' | 'after'
 
@@ -48,7 +83,8 @@ export interface ActionDraft {
   /** Address of the group this action belongs to: `33910:<owner pubkey>:<d>`. */
   collective?: string
   metrics: Partial<Record<MetricKey, number>>
-  waste: WasteType[]
+  /** Choices for this type, e.g. waste types for a cleanup or activities at an apiary. */
+  options: string[]
   photos: Photo[]
 }
 
@@ -73,15 +109,15 @@ export const APP_TAG = ['client', 'rastro', '0.1']
 
 export function buildActionTemplate(draft: ActionDraft, now = Math.floor(Date.now() / 1000)): EventTemplate {
   const tags: string[][] = [['t', draft.type]]
-  const weight = draft.metrics.weight_kg
-  tags.push(['alt', `Rastro: ${draft.type} action${weight ? `, ${weight} kg removed` : ''}`])
+  tags.push(['alt', `Rastro: ${draft.type} action${draft.place ? ` at ${draft.place}` : ''}`])
   if (draft.collective) tags.push(['a', draft.collective])
   if (draft.geohash) tags.push(['g', draft.geohash])
   if (draft.place) tags.push(['location', draft.place])
   for (const [key, value] of Object.entries(draft.metrics)) {
     if (typeof value === 'number' && Number.isFinite(value)) tags.push(['m', key, String(value)])
   }
-  for (const w of draft.waste) tags.push(['waste', w])
+  const { optionTag, options } = TYPE_SPEC[draft.type]
+  for (const o of draft.options) if ((options as readonly string[]).includes(o)) tags.push([optionTag, o])
   for (const p of draft.photos) {
     tags.push(['imeta', `url ${p.url}`, `x ${p.sha256}`, `m ${p.mime}`, `role ${p.role}`])
   }
@@ -107,7 +143,8 @@ export function parseAction(event: Event): Action | null {
   const type = event.tags.find((t) => t[0] === 't' && isActionType(t[1]))?.[1] as ActionType | undefined
   if (!type) return null
   const metrics: Action['metrics'] = {}
-  const waste: WasteType[] = []
+  const spec = TYPE_SPEC[type]
+  const options: string[] = []
   const photos: Photo[] = []
   let geohash: string | undefined
   let place: string | undefined
@@ -119,8 +156,8 @@ export function parseAction(event: Event): Action | null {
         if (tag[1] in METRICS && Number.isFinite(value)) metrics[tag[1] as MetricKey] = value
         break
       }
-      case 'waste':
-        if (isWasteType(tag[1])) waste.push(tag[1])
+      case spec.optionTag:
+        if ((spec.options as readonly string[]).includes(tag[1]) && !options.includes(tag[1])) options.push(tag[1])
         break
       case 'imeta': {
         const photo = parseImeta(tag)
@@ -148,7 +185,7 @@ export function parseAction(event: Event): Action | null {
     geohash,
     collective,
     metrics,
-    waste,
+    options,
     photos,
   }
 }

@@ -1,6 +1,6 @@
 import type { Event } from 'nostr-tools/pure'
 import * as nip19 from 'nostr-tools/nip19'
-import { parseAction, parseWitness, type Action, type Witness } from '../model/action'
+import { ACTION_TYPES, parseAction, parseWitness, type Action, type Witness } from '../model/action'
 import { latestCollectives, parseAddress, type Collective } from '../model/collective'
 import { KIND_ACTION, KIND_COLLECTIVE, KIND_PROFILE, KIND_WITNESS } from '../model/kinds'
 import { mergeEvents, queryLocal, queryRelays } from './client'
@@ -26,7 +26,7 @@ export async function loadAction(id: string): Promise<Action | null> {
 /** Local actions first; pass `remote` to also ask the relays. */
 export async function loadFeed(remote: boolean): Promise<Action[]> {
   const local = await queryLocal(isAction)
-  const found = remote ? await queryRelays({ kinds: [KIND_ACTION], '#t': ['cleanup'], limit: 50 }) : []
+  const found = remote ? await queryRelays({ kinds: [KIND_ACTION], '#t': [...ACTION_TYPES], limit: 50 }) : []
   return mergeEvents(local, found).map(parseAction).filter((a): a is Action => a !== null)
 }
 

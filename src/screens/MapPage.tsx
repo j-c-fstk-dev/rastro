@@ -3,12 +3,13 @@ import { useI18n } from '../i18n'
 import type { Action } from '../model/action'
 import { ActionsMap } from '../ui/ActionsMap'
 import { IconPin } from '../ui/icons'
+import { actionTitle } from '../ui/labels'
 import { useFeed } from './Home'
 
 export function MapPage() {
   const { t } = useI18n()
   const { actions } = useFeed()
-  const label = useCallback((a: Action) => a.place || t('home.untitled'), [t])
+  const label = useCallback((a: Action) => actionTitle(t, a), [t])
   const located = actions?.filter((a) => a.geohash) ?? []
   const [me, setMe] = useState<{ lat: number; lon: number } | null>(null)
   const [geoError, setGeoError] = useState('')

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toDecleanup } from '../export/decleanup'
 import { useI18n } from '../i18n'
-import { buildWitnessTemplate, METRICS, type Action, type MetricKey, type Witness } from '../model/action'
+import { buildWitnessTemplate, METRICS, TYPE_SPEC, type Action, type MetricKey, type Witness } from '../model/action'
 import { statusFor } from '../model/status'
 import { actionRef, groupRef, loadAction, loadWitnesses } from '../nostr/data'
 import { sign } from '../nostr/keys'
@@ -14,6 +14,7 @@ import { Photo } from '../ui/Photo'
 import { QrCode } from '../ui/QrCode'
 import { StatusLabel, Trail } from '../ui/Trail'
 import { useCollectives } from '../ui/useCollectives'
+import { actionTitle, optionLabel } from '../ui/labels'
 import { useProfiles } from '../ui/useProfiles'
 
 export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean; isNew: boolean }) {
@@ -67,7 +68,7 @@ export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean;
   const ref = actionRef(action)
   const presenceLink = absoluteLink(`a/${ref}?w=1`)
   const publicLink = absoluteLink(`a/${ref}`)
-  const title = action.place || t('home.untitled')
+  const title = actionTitle(t, action)
 
   const witness = async () => {
     setBusy(true)
@@ -96,7 +97,9 @@ export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean;
     URL.revokeObjectURL(url)
   }
 
-  const facts = (Object.keys(METRICS) as MetricKey[]).filter((k) => action.metrics[k] !== undefined)
+  // The type's own numbers first, in form order, then anything else that was recorded.
+  const order = [...TYPE_SPEC[action.type].metrics, ...(Object.keys(METRICS) as MetricKey[])]
+  const facts = [...new Set(order)].filter((k) => action.metrics[k] !== undefined)
 
   return (
     <main className={`page ${sk ? '' : 'no-tabbar'}`}>
@@ -153,9 +156,9 @@ export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean;
           ))}
         </dl>
       )}
-      {action.waste.length > 0 && (
+      {action.options.length > 0 && (
         <div className="chips" style={{ marginBottom: 18 }}>
-          {action.waste.map((w) => <span key={w} className="chip">{t(`waste.${w}`)}</span>)}
+          {action.options.map((o) => <span key={o} className="chip">{optionLabel(t, action.type, o)}</span>)}
         </div>
       )}
       {action.description && <p className="notes">{action.description}</p>}
@@ -212,7 +215,7 @@ export function ActionPage({ id, fromQr, isNew }: { id: string; fromQr: boolean;
         <button className="btn btn-block" onClick={() => void share()}>
           <IconShare /> {copied ? t('action.copied') : t('action.share')}
         </button>
-        {isMine && (
+        {isMine && action.type === 'cleanup' && (
           <button className="btn btn-text" onClick={exportDecleanup}>
             <IconDownload /> {t('action.export')}
           </button>

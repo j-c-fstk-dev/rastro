@@ -4,11 +4,12 @@ import type { Action, Witness } from '../model/action'
 import { statusFor } from '../model/status'
 import { loadFeed, loadWitnesses } from '../nostr/data'
 import { useSession } from '../session'
-import { dayOf, displayName, formatNumber, monthOf } from '../ui/format'
+import { dayOf, displayName, monthOf } from '../ui/format'
 import { IconScan } from '../ui/icons'
 import { Photo } from '../ui/Photo'
 import { StatusLabel, Trail } from '../ui/Trail'
 import { useCollectives } from '../ui/useCollectives'
+import { actionTitle, headlineText } from '../ui/labels'
 import { useProfiles } from '../ui/useProfiles'
 
 export function useFeed() {
@@ -68,7 +69,7 @@ export function Home() {
         {visible.map((action) => {
           const { status, witnesses: ws } = statusFor(action, witnesses, groups)
           const cover = action.photos.find((p) => p.role === 'after') ?? action.photos[0]
-          const weight = action.metrics.weight_kg
+          const impact = headlineText(t, locale, action)
           return (
             <li key={action.id}>
               <a className="entry" href={`#/a/${action.id}`}>
@@ -77,9 +78,9 @@ export function Home() {
                   <span>{monthOf(action.createdAt, locale)}</span>
                 </div>
                 <div className="entry-main">
-                  <h3>{action.place || t('home.untitled')}</h3>
+                  <h3>{actionTitle(t, action)}</h3>
                   <span className="entry-meta">
-                    {weight !== undefined ? `${formatNumber(weight, locale)} kg, ` : ''}
+                    {impact ? `${impact}, ` : ''}
                     {t('home.by', { name: displayName(action.pubkey, profiles) })}
                   </span>
                   <div className="row">

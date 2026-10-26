@@ -2,8 +2,8 @@
 
 **Real actions, signed by who did them, confirmed by who was there.**
 
-Rastro records real-world regenerative actions, starting with community cleanups, and lets the
-people who were there confirm them with their own signature. It works without signal, needs no
+Rastro records real-world regenerative actions (cleanups, planting, beekeeping, agroforestry and
+community work) and lets the people who were there confirm them with their own signature. It works without signal, needs no
 account or wallet, and runs on [Nostr](https://nostr.com), so no single company or government can
 take the records down.
 
@@ -15,7 +15,7 @@ because an authority approved it or a majority voted.
 ## How it works
 
 1. **Identity in ten seconds.** Open the app and type a name. A key is created on the device.
-2. **Record the action.** Before and after photos, place, numbers (kg, bags, area…). No signal? It waits on the phone and goes out later.
+2. **Record the action.** Pick the kind of action, add before and after photos, the place and its numbers (kg removed, plants, hives, honey…). No signal? It waits on the phone and goes out later.
 3. **Show the presence QR.** People who were there scan it and tap "I was there". Each testimony is signed with their own key.
 4. **The trail fills up.** *Observed* → *Confirmed* (2 witnesses) → *Consolidated* (5 witnesses, or 2 group members who were there). Nobody approves anything.
 5. **Prove it.** Group pages, a printable impact report with a map and verification links, and export in the [DeCleanup Network](https://decleanup.net) format.

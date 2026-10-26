@@ -10,7 +10,7 @@ const draft: ActionDraft = {
   place: 'Campeche, Florianópolis',
   geohash: '6gkzm',
   metrics: { weight_kg: 12.5, bags: 8 },
-  waste: ['plastic', 'glass'],
+  options: ['plastic', 'glass'],
   photos: [{ sha256: 'a'.repeat(64), url: 'https://b.example/' + 'a'.repeat(64) + '.jpg', mime: 'image/jpeg', role: 'before' }],
 }
 
@@ -25,6 +25,16 @@ describe('action events', () => {
     const author = getPublicKey(generateSecretKey())
     const event = finalizeEvent(buildWitnessTemplate({ id: 'f'.repeat(64), pubkey: author }, 'presencial', 'Estive lá'), generateSecretKey())
     expect(parseWitness(event)).toMatchObject({ actionId: 'f'.repeat(64), mode: 'presencial', note: 'Estive lá' })
+  })
+
+  it('stores choices under the tag of each action type', async () => {
+    const { headline } = await import('./action')
+    const planting: ActionDraft = { ...draft, type: 'planting', metrics: { plants: 40, species: 6 }, options: ['native', 'plastic'] }
+    const event = finalizeEvent(buildActionTemplate(planting), generateSecretKey())
+    expect(event.tags).toContainEqual(['plant', 'native'])
+    const parsed = parseAction(event)!
+    expect(parsed.options).toEqual(['native'])
+    expect(headline(parsed)).toEqual({ key: 'plants', value: 40 })
   })
 
   it('ignores photos with an invalid hash', () => {

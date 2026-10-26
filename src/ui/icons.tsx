@@ -50,3 +50,15 @@ export const IconCheck = (p: SVGProps<SVGSVGElement>) => (
 export const IconPrint = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="M7 9V3h10v6M7 17H4V9h16v8h-3" /><path d="M7 14h10v7H7z" /></svg>
 )
+export const IconBag = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M6 8h12l-1 12H7z" /><path d="M9 8c0-2 1.3-4 3-4s3 2 3 4" /><path d="M10 12l1 4M14 12l-1 4" /></svg>
+)
+export const IconSprout = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M12 21v-9" /><path d="M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 14c0-3.5 2.5-6 7-6 0 4-3 6-7 6z" /><path d="M7 21h10" /></svg>
+)
+export const IconHive = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M12 3l7 4v8l-7 4-7-4V7z" /><path d="M12 9.5l2.6 1.5v3L12 15.5 9.4 14v-3z" /></svg>
+)
+export const IconTree = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M12 21v-6" /><path d="M12 3c-3.3 0-6 2.5-6 5.6 0 1 .3 1.9.8 2.7A4 4 0 0 0 9 18h6a4 4 0 0 0 2.2-6.7c.5-.8.8-1.7.8-2.7C18 5.5 15.3 3 12 3z" /></svg>
+)

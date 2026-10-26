@@ -7,7 +7,13 @@ import type { Action } from '../model/action'
 /** Approximate radius (m) of a geohash cell, so the map never shows more precision than was published. */
 const RADIUS_BY_PRECISION: Record<number, number> = { 4: 20000, 5: 2400, 6: 610, 7: 76 }
 
-export function ActionsMap({ actions, className, label }: { actions: Action[]; className: string; label: (a: Action) => string }) {
+export function ActionsMap({ actions, className, label, me }: {
+  actions: Action[]
+  className: string
+  label: (a: Action) => string
+  /** The viewer's position, shown as a pin and centred on when set. */
+  me?: { lat: number; lon: number } | null
+}) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -33,12 +39,16 @@ export function ActionsMap({ actions, className, label }: { actions: Action[]; c
         .bindPopup(link)
         .addTo(map)
     }
-    if (bounds.length > 0) map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 13 })
+    if (me) {
+      const icon = L.divIcon({ className: 'pick-pin', html: '<span></span>', iconSize: [28, 28], iconAnchor: [14, 28] })
+      L.marker([me.lat, me.lon], { icon, interactive: false }).addTo(map)
+      map.setView([me.lat, me.lon], 12)
+    } else if (bounds.length > 0) map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 13 })
     else map.setView([0, 0], 2)
     return () => {
       map.remove()
     }
-  }, [actions, label])
+  }, [actions, label, me])
 
   return <div ref={ref} className={className} />
 }

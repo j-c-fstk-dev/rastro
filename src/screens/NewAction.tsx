@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { encodeGeohash } from '../geo/geohash'
 import { useI18n } from '../i18n'
 import { blobUrl } from '../media/blossom'
@@ -12,9 +12,21 @@ import { enqueueBlob, enqueueEvent } from '../nostr/outbox'
 import { go } from '../router'
 import { useSession } from '../session'
 import { IconCamera, IconCheck, IconPin } from '../ui/icons'
+import { LocationPicker, type Point } from '../ui/LocationPicker'
 
 type Photos = Partial<Record<PhotoRole, PreparedImage & { preview: string }>>
-type GeoState = { status: 'idle' | 'loading' | 'error' } | { status: 'ok'; lat: number; lon: number }
+type GeoStatus = 'locating' | 'gps' | 'map' | 'denied' | 'unavailable' | 'off'
+
+const LAST_POINT_KEY = 'rastro.lastPoint'
+
+function readLastPoint(): Point | null {
+  try {
+    const p = JSON.parse(localStorage.getItem(LAST_POINT_KEY) ?? 'null') as Point | null
+    return p && Number.isFinite(p.lat) && Number.isFinite(p.lon) ? p : null
+  } catch {
+    return null
+  }
+}
 
 const LAST_GROUP_KEY = 'rastro.lastGroup'
 
@@ -30,12 +42,32 @@ function Stepper({ label, value, onChange }: { label: string; value: string; onC
   )
 }
 
+function GeoStatusLine({ status }: { status: GeoStatus }) {
+  const { t } = useI18n()
+  const text: Record<GeoStatus, string> = {
+    locating: t('new.locating'),
+    gps: t('new.located'),
+    map: t('new.pickedOnMap'),
+    denied: t('new.locationDenied'),
+    unavailable: t('new.locateError'),
+    off: t('new.locationOff'),
+  }
+  return (
+    <p className={`geo-status ${status === 'denied' || status === 'unavailable' ? 'error' : ''}`} role="status">
+      {status === 'gps' || status === 'map' ? <IconCheck /> : <IconPin />}
+      {text[status]}
+    </p>
+  )
+}
+
 export function NewAction() {
   const { sk, pubkey } = useSession()
   const { t } = useI18n()
   const [photos, setPhotos] = useState<Photos>({})
   const [place, setPlace] = useState('')
-  const [geo, setGeo] = useState<GeoState>({ status: 'idle' })
+  // Location is on by default: the form asks for it as soon as it opens.
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>('locating')
+  const [point, setPoint] = useState<Point | null>(null)
   const [precise, setPrecise] = useState(false)
   const [metrics, setMetrics] = useState<Partial<Record<MetricKey, string>>>({})
   const [waste, setWaste] = useState<WasteType[]>([])
@@ -69,13 +101,24 @@ export function NewAction() {
     }
   }
 
-  const locate = () => {
-    setGeo({ status: 'loading' })
+  const locate = useCallback(() => {
+    if (!('geolocation' in navigator)) return setGeoStatus('unavailable')
+    setGeoStatus('locating')
     navigator.geolocation.getCurrentPosition(
-      (pos) => setGeo({ status: 'ok', lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => setGeo({ status: 'error' }),
-      { enableHighAccuracy: true, timeout: 15000 },
+      (pos) => {
+        setPoint({ lat: pos.coords.latitude, lon: pos.coords.longitude })
+        setGeoStatus('gps')
+      },
+      (err) => setGeoStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable'),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
     )
+  }, [])
+
+  useEffect(() => locate(), [locate])
+
+  const pickOnMap = (p: Point) => {
+    setPoint(p)
+    setGeoStatus('map')
   }
 
   const toggleWaste = (w: WasteType) => setWaste((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]))
@@ -96,6 +139,7 @@ export function NewAction() {
         if (raw && Number.isFinite(value) && value >= 0) numbers[key as MetricKey] = value
       }
 
+      if (point && geoStatus !== 'off') localStorage.setItem(LAST_POINT_KEY, JSON.stringify(point))
       const validGroup = groups.some((g) => g.address === group) ? group : undefined
       localStorage.setItem(LAST_GROUP_KEY, validGroup ?? '')
       const event = sign(
@@ -104,7 +148,7 @@ export function NewAction() {
           type: 'cleanup',
           description: description.trim(),
           place: place.trim() || undefined,
-          geohash: geo.status === 'ok' ? encodeGeohash(geo.lat, geo.lon, precise ? 7 : 5) : undefined,
+          geohash: point && geoStatus !== 'off' ? encodeGeohash(point.lat, point.lon, precise ? 7 : 5) : undefined,
           collective: validGroup,
           metrics: numbers,
           waste,
@@ -153,12 +197,36 @@ export function NewAction() {
             <span>{t('new.place')}</span>
             <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder={t('new.placePlaceholder')} />
           </label>
-          <button type="button" className="btn" onClick={locate} disabled={geo.status === 'loading'}>
-            {geo.status === 'ok' ? <IconCheck /> : <IconPin />}
-            {geo.status === 'ok' ? t('new.located') : geo.status === 'loading' ? t('new.locating') : t('new.locate')}
-          </button>
-          {geo.status === 'error' && <p className="error small">{t('new.locateError')}</p>}
-          {geo.status === 'ok' && (
+          <GeoStatusLine status={geoStatus} />
+          {geoStatus === 'denied' && (
+            <div className="help">
+              <strong>{t('new.locationOffTitle')}</strong>
+              <ol>
+                <li>{t('new.locationHelp1')}</li>
+                <li>{t('new.locationHelp2')}</li>
+                <li>{t('new.locationHelp3')}</li>
+              </ol>
+            </div>
+          )}
+          {geoStatus !== 'off' && (
+            <>
+              <LocationPicker value={point} onChange={pickOnMap} precise={precise} fallback={readLastPoint()} />
+              <p className="muted small">{t('new.mapHint')}</p>
+            </>
+          )}
+          <div className="row">
+            {geoStatus !== 'gps' && geoStatus !== 'locating' && (
+              <button type="button" className="btn" onClick={locate}>
+                <IconPin /> {t('new.locate')}
+              </button>
+            )}
+            {geoStatus === 'off' ? null : (
+              <button type="button" className="btn btn-text" onClick={() => setGeoStatus('off')}>
+                {t('new.noLocation')}
+              </button>
+            )}
+          </div>
+          {point && geoStatus !== 'off' && (
             <label className="check">
               <input type="checkbox" checked={precise} onChange={(e) => setPrecise(e.target.checked)} />
               <span>{t('new.precise')}</span>

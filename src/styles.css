@@ -329,3 +329,14 @@ code { font-size: 0.8rem; background: var(--paper); padding: 8px 10px; border-ra
 
 /* Leaflet panes use z-index in the hundreds; keep them inside their own stacking context. */
 .map, .report-map { position: relative; z-index: 0; isolation: isolate; }
+
+/* Location picker */
+.picker-map { height: 260px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); position: relative; z-index: 0; isolation: isolate; }
+.pick-pin span {
+  display: block; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: var(--flag); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.geo-status { display: flex; gap: 8px; align-items: flex-start; font-size: 0.92rem; }
+.geo-status svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.help { background: var(--flag-soft); border-radius: var(--r-sm); padding: 12px 14px; font-size: 0.92rem; }
+.help ol { margin: 6px 0 0; padding-left: 20px; }

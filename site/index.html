@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Rastro</title>
-<meta name="description" content="Every cleanup leaves a trace. Record real-world actions, signed by who did them and confirmed by who was there." />
+<meta name="description" content="Every action leaves a trace. Record real-world impact, signed by who did it and confirmed by who was there." />
 <meta property="og:title" content="Rastro" />
-<meta property="og:description" content="Every cleanup leaves a trace. Real actions, signed by who did them, confirmed by who was there." />
+<meta property="og:description" content="Every action leaves a trace. Real impact, signed by who did it, confirmed by who was there." />
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -89,7 +89,14 @@
   .split ul { margin: 18px 0 0; padding-left: 20px; }
   .split li { margin: 6px 0; }
   .terminal { background: var(--ink); color: var(--paper); border-radius: 14px; padding: 20px 22px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92rem; line-height: 1.7; overflow-x: auto; }
-  .terminal .c { opacity: 0.6; }
+  .terminal .c { opacity: 0.55; user-select: none; }
+  .terminal-wrap { position: relative; }
+  .terminal-wrap .terminal { margin: 0; padding-right: 96px; }
+  .copy {
+    position: absolute; top: 12px; right: 12px; min-height: 36px; padding: 0 14px; border-radius: 8px;
+    border: 1.5px solid currentColor; background: transparent; color: var(--paper); font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  }
+  .copy.done { background: var(--paper); color: var(--ink); }
 
   .principle { background: var(--ink); color: var(--paper); border-top: none; }
   .principle h2 { color: var(--paper); }
@@ -123,8 +130,8 @@
   <main>
     <div class="hero">
       <div>
-        <h1 data-i18n="hero.title">Every cleanup leaves a trace.</h1>
-        <p class="sub" data-i18n="hero.sub">Rastro records real-world actions, signed by the people who did them and confirmed by the people who were there. No accounts, no wallets, no central server.</p>
+        <h1 data-i18n="hero.title">Every action leaves a trace.</h1>
+        <p class="sub" data-i18n="hero.sub">Rastro records real-world impact: cleanups, plantings, restoration, community work. Each action is signed by the people who did it and confirmed by the people who were there. No accounts, no wallets, no central server.</p>
         <div class="ctas">
           <a class="btn btn-flag" href="app/" data-i18n="hero.open">Open the app</a>
           <a class="link" href="#node" data-i18n="hero.node">Run a community node</a>
@@ -154,7 +161,7 @@
   <div class="wrap">
     <h2 data-i18n="how.title">How it works</h2>
     <ol class="steps">
-      <li><h3 data-i18n="how.1.t">Record</h3><p data-i18n="how.1.b">Before and after photos, the place and a few numbers. It works without signal and sends itself when you are back online.</p></li>
+      <li><h3 data-i18n="how.1.t">Record</h3><p data-i18n="how.1.b">Before and after photos, the place and what changed. It works without signal and sends itself when you are back online.</p></li>
       <li><h3 data-i18n="how.2.t">Show the presence QR</h3><p data-i18n="how.2.b">Everyone who was there scans it and confirms with their own key. People new to Rastro join in ten seconds, right there.</p></li>
       <li><h3 data-i18n="how.3.t">The trail fills up</h3><p data-i18n="how.3.b">Two witnesses make an action Confirmed. Five make it Consolidated. Nobody approves anything: the evidence adds up.</p></li>
     </ol>
@@ -194,9 +201,12 @@
       <p style="margin-top:20px" data-i18n="node.body">An old laptop or a mini PC is enough. One command starts a relay, a photo server and a Tor address. Nodes copy each other, so no single machine matters.</p>
       <p style="margin-top:20px"><a class="link" href="https://github.com/j-c-fstk-dev/rastro/tree/main/node" data-i18n="node.link">Node setup guide</a></p>
     </div>
-    <pre class="terminal"><span class="c">$ git clone https://github.com/j-c-fstk-dev/rastro</span>
-<span class="c">$ cd rastro/node</span>
-$ ./start.sh</pre>
+    <div class="terminal-wrap">
+      <pre class="terminal" id="node-cmd"><span class="c">$ </span>git clone https://github.com/j-c-fstk-dev/rastro
+<span class="c">$ </span>cd rastro/node
+<span class="c">$ </span>./start.sh</pre>
+      <button type="button" class="copy" id="copy-cmd" data-i18n="node.copy">Copy</button>
+    </div>
   </div>
 </section>
 
@@ -217,8 +227,8 @@ $ ./start.sh</pre>
 <script>
 (() => {
   const pt = {
-    'hero.title': 'Todo mutirão deixa um rastro.',
-    'hero.sub': 'O Rastro registra ações no mundo real, assinadas por quem fez e confirmadas por quem estava lá. Sem cadastro, sem carteira, sem servidor central.',
+    'hero.title': 'Toda ação deixa um rastro.',
+    'hero.sub': 'O Rastro registra impacto no mundo real: mutirões, plantios, restauração, trabalho comunitário. Cada ação é assinada por quem fez e confirmada por quem estava lá. Sem cadastro, sem carteira, sem servidor central.',
     'hero.open': 'Abrir o app',
     'hero.node': 'Rodar um nó comunitário',
     'demo.before': 'Antes', 'demo.after': 'Depois',
@@ -226,7 +236,7 @@ $ ./start.sh</pre>
     'demo.meta': '12,5 kg removidos em 8 sacos',
     'status.observed': 'Observado', 'status.confirmed': 'Confirmado', 'status.consolidated': 'Consolidado',
     'how.title': 'Como funciona',
-    'how.1.t': 'Registre', 'how.1.b': 'Fotos de antes e depois, o lugar e alguns números. Funciona sem sinal e se envia sozinho quando a conexão volta.',
+    'how.1.t': 'Registre', 'how.1.b': 'Fotos de antes e depois, o lugar e o que mudou. Funciona sem sinal e se envia sozinho quando a conexão volta.',
     'how.2.t': 'Mostre o QR de presença', 'how.2.b': 'Todo mundo que estava lá escaneia e confirma com a própria chave. Quem ainda não usa o Rastro entra em dez segundos, ali mesmo.',
     'how.3.t': 'A trilha se preenche', 'how.3.b': 'Duas testemunhas tornam a ação Confirmada. Cinco, Consolidada. Ninguém aprova nada: a evidência se acumula.',
     'why.title': 'Feito para o campo, não para porteiros',
@@ -242,6 +252,7 @@ $ ./start.sh</pre>
     'node.title': 'Guarde os registros da sua comunidade em casa',
     'node.body': 'Um notebook antigo ou um mini PC basta. Um comando sobe um relay, um servidor de fotos e um endereço Tor. Os nós copiam uns aos outros, então nenhuma máquina sozinha importa.',
     'node.link': 'Guia de instalação do nó',
+    'node.copy': 'Copiar', 'node.copied': 'Copiado',
     'principle.title': 'A verdade não é votada',
     'principle.body': 'O Rastro segue a Aletheia: um registro se sustenta porque é assinado e testemunhado, não porque uma autoridade aprovou ou uma maioria concordou.',
     'footer.license': 'Software livre sob AGPL-3.0. Feito sobre Nostr.',
@@ -267,6 +278,25 @@ $ ./start.sh</pre>
     try { localStorage.setItem('rastro.lang', lang) } catch {}
     apply()
   }))
+
+  // Copy the node commands without the "$ " prompts.
+  const copyBtn = document.getElementById('copy-cmd')
+  copyBtn.addEventListener('click', async () => {
+    const lines = document.getElementById('node-cmd').innerText.split('\n').map((l) => l.replace(/^\$\s*/, '')).filter(Boolean)
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+    } catch {
+      const area = document.createElement('textarea')
+      area.value = lines.join('\n')
+      document.body.append(area)
+      area.select()
+      document.execCommand('copy')
+      area.remove()
+    }
+    copyBtn.textContent = lang === 'pt' ? pt['node.copied'] : 'Copied'
+    copyBtn.classList.add('done')
+    setTimeout(() => { copyBtn.textContent = dict()['node.copy']; copyBtn.classList.remove('done') }, 2000)
+  })
 
   // The trail: witnesses arrive one at a time and the status follows.
   const trail = document.getElementById('trail')

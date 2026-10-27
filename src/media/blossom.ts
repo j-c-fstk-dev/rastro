@@ -49,7 +49,14 @@ export async function uploadBlob(sk: Uint8Array, blob: Blob, sha256: string): Pr
           body: blob,
           headers: { Authorization: header, 'Content-Type': blob.type || 'image/jpeg' },
         })
-        if (res.ok) return { server, ok: true, detail: String(res.status) }
+        if (res.ok) {
+          // Some servers re-encode photos. A copy under another hash can't be found by the app or verified.
+          const descriptor = (await res.json().catch(() => null)) as { sha256?: string } | null
+          if (descriptor?.sha256 && descriptor.sha256 !== sha256) {
+            return { server, ok: false, detail: `${res.status} stored a modified copy (${descriptor.sha256.slice(0, 8)}…)` }
+          }
+          return { server, ok: true, detail: String(res.status) }
+        }
         return { server, ok: false, detail: `${res.status} ${await reasonOf(res)}`.trim() }
       } catch (err) {
         // Browsers report blocked cross-origin requests and offline servers the same way.

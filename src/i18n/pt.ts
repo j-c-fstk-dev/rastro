@@ -17,6 +17,10 @@ export const pt: Record<MessageKey, string> = {
   'keys.needsPassword': 'Esta chave está protegida por senha.',
   'keys.notNsec': 'Isso não parece uma chave privada (nsec).',
 
+  'clock.ahead': 'O relógio deste aparelho está {amount} adiantado. O Rastro corrige isso ao assinar, mas ajuste a data e hora para automáticas nas configurações.',
+  'clock.behind': 'O relógio deste aparelho está {amount} atrasado. O Rastro corrige isso ao assinar, mas ajuste a data e hora para automáticas nas configurações.',
+  'clock.hours': '{n} horas',
+  'clock.minutes': '{n} minutos',
   'nav.log': 'Registro',
   'nav.map': 'Mapa',
   'nav.record': 'Registrar',

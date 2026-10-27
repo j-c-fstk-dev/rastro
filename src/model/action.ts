@@ -1,4 +1,5 @@
 import type { Event, EventTemplate } from 'nostr-tools/pure'
+import { nowSeconds } from '../clock'
 import { KIND_ACTION, KIND_COLLECTIVE, KIND_WITNESS } from './kinds'
 
 export const ACTION_TYPES = ['cleanup', 'planting', 'apiary', 'agroforestry', 'community'] as const
@@ -107,7 +108,7 @@ export interface Witness {
 
 export const APP_TAG = ['client', 'rastro', '0.1']
 
-export function buildActionTemplate(draft: ActionDraft, now = Math.floor(Date.now() / 1000)): EventTemplate {
+export function buildActionTemplate(draft: ActionDraft, now = nowSeconds()): EventTemplate {
   const tags: string[][] = [['t', draft.type]]
   tags.push(['alt', `Rastro: ${draft.type} action${draft.place ? ` at ${draft.place}` : ''}`])
   if (draft.collective) tags.push(['a', draft.collective])
@@ -194,7 +195,7 @@ export function buildWitnessTemplate(
   action: Pick<Action, 'id' | 'pubkey'>,
   mode: WitnessMode,
   note = '',
-  now = Math.floor(Date.now() / 1000),
+  now = nowSeconds(),
 ): EventTemplate {
   return {
     kind: KIND_WITNESS,

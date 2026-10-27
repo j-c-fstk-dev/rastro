@@ -12,6 +12,8 @@ import { Report } from './screens/Report'
 import { ScanPage } from './screens/ScanPage'
 import { Welcome } from './screens/Welcome'
 import { IconGroup, IconLog, IconMap, IconPlus, IconUser } from './ui/icons'
+import { useEffect, useState } from 'react'
+import { clockSkewMs } from './clock'
 import { LangSwitch } from './ui/LangSwitch'
 
 type Tab = 'log' | 'map' | 'new' | 'groups' | 'me'
@@ -60,6 +62,25 @@ function route(screen?: string, arg?: string, sub?: string, params = new URLSear
   return [<Home />, 'log']
 }
 
+/** Warns when the device clock is far off. Signing already uses corrected time. */
+function ClockNotice() {
+  const { t } = useI18n()
+  const [skew, setSkew] = useState(clockSkewMs)
+  useEffect(() => {
+    // Calibration runs at startup; check again shortly after it has had time to finish.
+    const timer = setTimeout(() => setSkew(clockSkewMs()), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+  if (!skew) return null
+  const minutes = Math.round(Math.abs(skew) / 60000)
+  const amount = minutes >= 90 ? t('clock.hours', { n: Math.round(minutes / 60) }) : t('clock.minutes', { n: minutes })
+  return (
+    <p className="clock-notice" role="status">
+      {t(skew > 0 ? 'clock.ahead' : 'clock.behind', { amount })}
+    </p>
+  )
+}
+
 export function App() {
   const { sk, pending, online } = useSession()
   const { t } = useI18n()
@@ -89,6 +110,7 @@ export function App() {
           <LangSwitch />
         )}
       </header>
+      <ClockNotice />
       {content}
       {sk && <TabBar current={tab} />}
     </>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { KIND_PROFILE } from './model/kinds'
 import { createIdentity, loadSecretKey, pubkeyOf, restoreIdentity, sign } from './nostr/keys'
+import { nowSeconds } from './clock'
 import { enqueueEvent, onPendingChange } from './nostr/outbox'
 
 interface Session {
@@ -33,7 +34,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const session = useMemo<Session>(() => {
     const publishProfile = async (key: Uint8Array, name: string) => {
-      const created_at = Math.floor(Date.now() / 1000)
+      const created_at = nowSeconds()
       await enqueueEvent(sign(key, { kind: KIND_PROFILE, created_at, content: JSON.stringify({ name }), tags: [] }))
     }
     return {

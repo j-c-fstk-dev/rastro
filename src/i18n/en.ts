@@ -16,6 +16,10 @@ export const en = {
   'keys.needsPassword': 'This key is password protected.',
   'keys.notNsec': 'This does not look like a private key (nsec).',
 
+  'clock.ahead': 'This device’s clock is {amount} ahead. Rastro corrects it when signing, but please set the date and time to automatic in your settings.',
+  'clock.behind': 'This device’s clock is {amount} behind. Rastro corrects it when signing, but please set the date and time to automatic in your settings.',
+  'clock.hours': '{n} hours',
+  'clock.minutes': '{n} minutes',
   'nav.log': 'Log',
   'nav.map': 'Map',
   'nav.record': 'Record',

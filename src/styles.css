@@ -354,3 +354,5 @@ code { font-size: 0.8rem; background: var(--paper); padding: 8px 10px; border-ra
 .upload-log li { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--line); }
 .upload-log li.ok span:last-child { color: var(--moss); font-weight: 650; }
 .upload-log li.error span:last-child { color: var(--danger); font-weight: 650; }
+.clock-notice { max-width: 640px; margin: 4px auto 0; padding: 10px 14px; border-radius: var(--r-sm); background: var(--flag-soft); font-size: 0.9rem; }
+@media (max-width: 672px) { .clock-notice { margin: 4px 16px 0; } }

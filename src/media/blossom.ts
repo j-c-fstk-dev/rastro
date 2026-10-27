@@ -1,5 +1,6 @@
 import { createUploadAuth, encodeAuthorizationHeader } from 'nostr-tools/nipb7'
 import { finalizeEvent, type EventTemplate } from 'nostr-tools/pure'
+import { nowSeconds } from '../clock'
 import { getBlossomServers } from '../nostr/config'
 
 const trimSlash = (s: string) => s.replace(/\/+$/, '')
@@ -39,7 +40,16 @@ async function reasonOf(res: Response): Promise<string> {
 
 /** Uploads to every configured server for redundancy. Succeeds if at least one stored it. */
 export async function uploadBlob(sk: Uint8Array, blob: Blob, sha256: string): Promise<boolean> {
-  const auth = await createUploadAuth(async (draft: EventTemplate) => finalizeEvent(draft, sk), sha256)
+  // Sign with corrected time: servers reject authorizations stamped too far in the past or future.
+  const now = nowSeconds()
+  const auth = await createUploadAuth(
+    async (draft: EventTemplate) =>
+      finalizeEvent(
+        { ...draft, created_at: now, tags: draft.tags.map((t) => (t[0] === 'expiration' ? ['expiration', String(now + 3600)] : t)) },
+        sk,
+      ),
+    sha256,
+  )
   const header = encodeAuthorizationHeader(auth)
   const attempts = await Promise.all(
     getBlossomServers().map(async (server): Promise<UploadAttempt> => {

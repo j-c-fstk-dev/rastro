@@ -6,10 +6,13 @@ import { App } from './App'
 import { I18nProvider } from './i18n'
 import { startOutbox } from './nostr/outbox'
 import { SessionProvider } from './session'
+import { calibrateClock } from './clock'
 import './styles.css'
 
 registerSW({ immediate: true })
-startOutbox()
+// Measure the device clock before anything is signed and sent.
+void calibrateClock().finally(startOutbox)
+window.addEventListener('online', () => void calibrateClock())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

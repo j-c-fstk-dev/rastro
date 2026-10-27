@@ -1,5 +1,6 @@
 import type { Event, EventTemplate } from 'nostr-tools/pure'
 import { APP_TAG } from './action'
+import { nowSeconds } from '../clock'
 import { KIND_COLLECTIVE } from './kinds'
 
 /**
@@ -27,7 +28,7 @@ export function parseAddress(address: string): { owner: string; d: string } | nu
 
 export function buildCollectiveTemplate(
   c: Pick<Collective, 'd' | 'name' | 'description' | 'members'>,
-  now = Math.floor(Date.now() / 1000),
+  now = nowSeconds(),
 ): EventTemplate {
   return {
     kind: KIND_COLLECTIVE,

@@ -1,0 +1,7 @@
+# Containers read these files: keep Linux line endings even when cloned on Windows.
+*.conf text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf
+torrc text eol=lf
+Dockerfile text eol=lf
+*.ps1 text eol=crlf

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../i18n'
+import { lastUploadLog } from '../media/blossom'
+import { formatDateTime } from '../ui/format'
 import { DEFAULT_BLOSSOM_SERVERS, DEFAULT_RELAYS, getBlossomServers, getRelays, resetInfrastructure, setBlossomServers, setRelays } from '../nostr/config'
 import { encryptedBackup, forgetIdentity, npubOf, nsecOf } from '../nostr/keys'
 import { flush } from '../nostr/outbox'
@@ -14,7 +16,8 @@ const fromLines = (text: string) => text.split('\n').map((s) => s.trim()).filter
 
 export function Me() {
   const { sk, pubkey, pending, online, updateName } = useSession()
-  const { t, tn } = useI18n()
+  const { t, tn, locale } = useI18n()
+  const uploadLog = lastUploadLog()
   const profiles = useProfiles(pubkey ? [pubkey] : [])
   const [name, setName] = useState<string | null>(null)
   const [password, setPassword] = useState('')
@@ -81,6 +84,19 @@ export function Me() {
           {online ? t('me.online') : t('me.offline')} {pending > 0 ? tn('me.pending', pending) : t('me.nothingPending')}
         </p>
         {pending > 0 && online && <button className="btn" onClick={() => void flush()}>{t('me.sendNow')}</button>}
+        {uploadLog && (
+          <div className="stack">
+            <h3>{t('me.uploads', { time: formatDateTime(uploadLog.at / 1000, locale) })}</h3>
+            <ul className="upload-log">
+              {uploadLog.attempts.map((a) => (
+                <li key={a.server} className={a.ok ? 'ok' : 'error'}>
+                  <span className="break">{a.server.replace(/^https?:\/\//, '')}</span>
+                  <span>{a.ok ? t('me.uploadOk') : t('me.uploadFail', { detail: a.detail || '?' })}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <a className="btn btn-text" href="#/report"><IconPrint /> {t('report.title')}</a>
       </section>
 

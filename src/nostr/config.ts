@@ -5,9 +5,12 @@ export const DEFAULT_RELAYS = [
   'wss://relay.primal.net',
 ]
 
+// Photos go to all of them; one success is enough. "You → Sending" shows which ones accepted the last upload.
 export const DEFAULT_BLOSSOM_SERVERS = [
   'https://blossom.primal.net',
   'https://nostr.download',
+  'https://blossom.band',
+  'https://files.v0l.io',
 ]
 
 const RELAYS_KEY = 'rastro.relays'

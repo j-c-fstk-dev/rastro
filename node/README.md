@@ -21,14 +21,36 @@ Nodes don't depend on each other. When one goes offline, the others still have t
 
 ## Start
 
+**Linux / macOS**
+
 ```sh
 git clone https://github.com/j-c-fstk-dev/rastro
 cd rastro/node
 ./start.sh
 ```
 
+**Windows**
+
+1. Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) (it sets up WSL 2 for you) and [Git for Windows](https://git-scm.com/download/win).
+2. Open Docker Desktop once and wait until it says it is running.
+3. In PowerShell:
+
+```powershell
+git clone https://github.com/j-c-fstk-dev/rastro
+cd rastro\node
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
 The first run compiles strfry from source, which takes a few minutes. The script then prints the
 node's addresses, including the onion address.
+
+### Keeping a Windows computer on as a node
+
+- **Settings → System → Power**: set sleep to *Never* when plugged in.
+- **Docker Desktop → Settings → General**: turn on *Start Docker Desktop when you sign in*.
+  The node's containers restart on their own when Docker starts.
+- Windows Update may restart the computer; after it signs in again, the node comes back by itself.
+- If other devices on your network should reach it, allow ports 7777 and 3000 when Windows Firewall asks.
 
 ## Use it from the app
 
@@ -54,7 +76,7 @@ free [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connec
    ```
    TUNNEL_TOKEN=eyJh...
    ```
-4. Run `./start.sh --tunnel`.
+4. Run `./start.sh --tunnel` (on Windows: `.\start.ps1 -Tunnel`).
 
 Cloudflare can see the traffic metadata and could cut the tunnel. That is why the onion address
 always runs too, and why records are copied to other nodes.
@@ -72,6 +94,9 @@ Add it to cron to keep nodes in sync, for example every 15 minutes:
 ```
 */15 * * * * /home/you/rastro/node/sync.sh wss://other-node.example
 ```
+
+On Windows: `powershell -ExecutionPolicy Bypass -File .\sync.ps1 wss://other-node.example`, and use
+Task Scheduler instead of cron to repeat it.
 
 ## What this node accepts
 
